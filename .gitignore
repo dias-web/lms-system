@@ -1,0 +1,31 @@
+# Binaries
+/bin/
+/build/
+*.exe
+*.dll
+*.so
+*.dylib
+/app
+
+# Test binaries and coverage
+*.test
+*.out
+coverage.*
+
+# IDE
+.idea/
+.vscode/
+
+# Env
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vendor (optional — keep go.sum, drop vendor)
+/vendor/
