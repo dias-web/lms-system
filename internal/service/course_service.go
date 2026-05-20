@@ -1,0 +1,101 @@
+package service
+
+import (
+	"context"
+	"errors"
+
+	"github.com/dias-web/lms-system/internal/dto"
+	"github.com/dias-web/lms-system/internal/repository"
+	"github.com/sirupsen/logrus"
+)
+
+type CourseService interface {
+	Create(ctx context.Context, req dto.CreateCourseRequest) (dto.CourseResponse, error)
+	GetByID(ctx context.Context, id uint) (dto.CourseResponse, error)
+	GetByIDWithChapters(ctx context.Context, id uint) (dto.CourseResponse, error)
+	List(ctx context.Context) ([]dto.CourseResponse, error)
+	Update(ctx context.Context, id uint, req dto.UpdateCourseRequest) (dto.CourseResponse, error)
+	Delete(ctx context.Context, id uint) error
+}
+
+type courseService struct {
+	repo repository.CourseRepository
+	log  *logrus.Logger
+}
+
+func NewCourseService(repo repository.CourseRepository, log *logrus.Logger) CourseService {
+	return &courseService{repo: repo, log: log}
+}
+
+func (s *courseService) Create(ctx context.Context, req dto.CreateCourseRequest) (dto.CourseResponse, error) {
+	course := req.ToEntity()
+	if err := s.repo.Create(ctx, &course); err != nil {
+		return dto.CourseResponse{}, err
+	}
+	s.log.WithFields(logrus.Fields{"course_id": course.ID, "name": course.Name}).
+		Info("course created")
+	return dto.ToCourseResponse(&course), nil
+}
+
+func (s *courseService) GetByID(ctx context.Context, id uint) (dto.CourseResponse, error) {
+	course, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return dto.CourseResponse{}, ErrCourseNotFound
+		}
+		return dto.CourseResponse{}, err
+	}
+	return dto.ToCourseResponse(course), nil
+}
+
+func (s *courseService) GetByIDWithChapters(ctx context.Context, id uint) (dto.CourseResponse, error) {
+	course, err := s.repo.GetByIDWithChapters(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return dto.CourseResponse{}, ErrCourseNotFound
+		}
+		return dto.CourseResponse{}, err
+	}
+	return dto.ToCourseResponse(course), nil
+}
+
+func (s *courseService) List(ctx context.Context) ([]dto.CourseResponse, error) {
+	courses, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dto.ToCourseResponseList(courses), nil
+}
+
+func (s *courseService) Update(ctx context.Context, id uint, req dto.UpdateCourseRequest) (dto.CourseResponse, error) {
+	course, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return dto.CourseResponse{}, ErrCourseNotFound
+		}
+		return dto.CourseResponse{}, err
+	}
+
+	req.ApplyTo(course)
+
+	if err := s.repo.Update(ctx, course); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return dto.CourseResponse{}, ErrCourseNotFound
+		}
+		return dto.CourseResponse{}, err
+	}
+	s.log.WithFields(logrus.Fields{"course_id": course.ID, "name": course.Name}).
+		Info("course updated")
+	return dto.ToCourseResponse(course), nil
+}
+
+func (s *courseService) Delete(ctx context.Context, id uint) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrCourseNotFound
+		}
+		return err
+	}
+	s.log.WithField("course_id", id).Info("course deleted")
+	return nil
+}
