@@ -12,6 +12,7 @@ import (
 
 	"github.com/dias-web/lms-system/internal/config"
 	"github.com/dias-web/lms-system/internal/dto"
+	"github.com/dias-web/lms-system/internal/middleware"
 	"github.com/dias-web/lms-system/internal/repository"
 	"github.com/dias-web/lms-system/internal/service"
 	"github.com/dias-web/lms-system/pkg/database"
@@ -27,17 +28,15 @@ func parseUintParam(s string, dst *uint) error {
 	return nil
 }
 
-func writeServiceError(c *gin.Context, err error) {
-	switch {
-	case errors.Is(err, service.ErrCourseNotFound),
-		errors.Is(err, service.ErrChapterNotFound),
-		errors.Is(err, service.ErrLessonNotFound):
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-	case errors.Is(err, service.ErrInvalidInput):
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	}
+// bindError wraps a Gin binding error so the middleware emits a 400 with the
+// INVALID_INPUT code while preserving the validator's message.
+func bindError(err error) error {
+	return fmt.Errorf("%w: %s", service.ErrInvalidInput, err.Error())
+}
+
+// invalidIDError signals an unparsable path parameter.
+func invalidIDError() error {
+	return fmt.Errorf("%w: invalid id", service.ErrInvalidInput)
 }
 
 func main() {
@@ -89,7 +88,14 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	router := gin.New()
-	router.Use(gin.Recovery(), gin.Logger())
+	router.HandleMethodNotAllowed = true
+	router.Use(
+		gin.Logger(),
+		middleware.Recovery(log),
+		middleware.ErrorHandler(log),
+	)
+	router.NoRoute(middleware.NotFoundHandler())
+	router.NoMethod(middleware.MethodNotAllowedHandler())
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -99,7 +105,7 @@ func main() {
 	router.GET("/courses", func(c *gin.Context) {
 		courses, err := courseSvc.List(c.Request.Context())
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, courses)
@@ -108,12 +114,12 @@ func main() {
 	router.GET("/courses/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		course, err := courseSvc.GetByIDWithChapters(c.Request.Context(), id)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, course)
@@ -122,12 +128,12 @@ func main() {
 	router.POST("/courses", func(c *gin.Context) {
 		var req dto.CreateCourseRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			_ = c.Error(bindError(err))
 			return
 		}
 		course, err := courseSvc.Create(c.Request.Context(), req)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusCreated, course)
@@ -136,17 +142,17 @@ func main() {
 	router.PUT("/courses/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		var req dto.UpdateCourseRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			_ = c.Error(bindError(err))
 			return
 		}
 		course, err := courseSvc.Update(c.Request.Context(), id, req)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, course)
@@ -155,11 +161,11 @@ func main() {
 	router.DELETE("/courses/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		if err := courseSvc.Delete(c.Request.Context(), id); err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.Status(http.StatusNoContent)
@@ -169,12 +175,12 @@ func main() {
 	router.GET("/courses/:id/chapters", func(c *gin.Context) {
 		var courseID uint
 		if err := parseUintParam(c.Param("id"), &courseID); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		chapters, err := chapterSvc.ListByCourse(c.Request.Context(), courseID)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, chapters)
@@ -183,12 +189,12 @@ func main() {
 	router.GET("/chapters/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		chapter, err := chapterSvc.GetByIDWithLessons(c.Request.Context(), id)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, chapter)
@@ -197,12 +203,12 @@ func main() {
 	router.POST("/chapters", func(c *gin.Context) {
 		var req dto.CreateChapterRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			_ = c.Error(bindError(err))
 			return
 		}
 		chapter, err := chapterSvc.Create(c.Request.Context(), req)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusCreated, chapter)
@@ -211,17 +217,17 @@ func main() {
 	router.PUT("/chapters/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		var req dto.UpdateChapterRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			_ = c.Error(bindError(err))
 			return
 		}
 		chapter, err := chapterSvc.Update(c.Request.Context(), id, req)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, chapter)
@@ -230,11 +236,11 @@ func main() {
 	router.DELETE("/chapters/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		if err := chapterSvc.Delete(c.Request.Context(), id); err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.Status(http.StatusNoContent)
@@ -244,12 +250,12 @@ func main() {
 	router.GET("/chapters/:id/lessons", func(c *gin.Context) {
 		var chapterID uint
 		if err := parseUintParam(c.Param("id"), &chapterID); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		lessons, err := lessonSvc.ListByChapter(c.Request.Context(), chapterID)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, lessons)
@@ -258,12 +264,12 @@ func main() {
 	router.GET("/lessons/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		lesson, err := lessonSvc.GetByID(c.Request.Context(), id)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, lesson)
@@ -272,12 +278,12 @@ func main() {
 	router.POST("/lessons", func(c *gin.Context) {
 		var req dto.CreateLessonRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			_ = c.Error(bindError(err))
 			return
 		}
 		lesson, err := lessonSvc.Create(c.Request.Context(), req)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusCreated, lesson)
@@ -286,17 +292,17 @@ func main() {
 	router.PUT("/lessons/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		var req dto.UpdateLessonRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			_ = c.Error(bindError(err))
 			return
 		}
 		lesson, err := lessonSvc.Update(c.Request.Context(), id, req)
 		if err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, lesson)
@@ -305,11 +311,11 @@ func main() {
 	router.DELETE("/lessons/:id", func(c *gin.Context) {
 		var id uint
 		if err := parseUintParam(c.Param("id"), &id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+			_ = c.Error(invalidIDError())
 			return
 		}
 		if err := lessonSvc.Delete(c.Request.Context(), id); err != nil {
-			writeServiceError(c, err)
+			_ = c.Error(err)
 			return
 		}
 		c.Status(http.StatusNoContent)
