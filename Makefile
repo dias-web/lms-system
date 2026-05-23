@@ -1,4 +1,4 @@
-.PHONY: help build run tidy test docker-up docker-down docker-build migrate-up migrate-down migrate-create swag swag-install
+.PHONY: help build run tidy test docker-up docker-down docker-build migrate-up migrate-down migrate-create swag swag-install mocks mockery-install
 
 include .env
 export
@@ -21,6 +21,8 @@ help:
 	@echo "  migrate-create  - scaffold a new migration: make migrate-create name=add_users_table"
 	@echo "  swag            - regenerate Swagger docs (docs/) from annotations"
 	@echo "  swag-install    - install the swag CLI ($$GOPATH/bin/swag)"
+	@echo "  mocks           - regenerate testify mocks from .mockery.yaml"
+	@echo "  mockery-install - install the mockery CLI ($$GOPATH/bin/mockery)"
 
 build:
 	go build -o bin/app ./cmd/app
@@ -58,3 +60,9 @@ swag:
 
 swag-install:
 	go install github.com/swaggo/swag/cmd/swag@latest
+
+mocks:
+	mockery
+
+mockery-install:
+	go install github.com/vektra/mockery/v2@latest
