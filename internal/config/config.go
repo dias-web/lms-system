@@ -13,8 +13,9 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Port string
-	Env  string
+	Port     string
+	Env      string
+	LogLevel string
 }
 
 type PostgresConfig struct {
@@ -31,8 +32,9 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		App: AppConfig{
-			Port: getEnv("APP_PORT", "8080"),
-			Env:  getEnv("APP_ENV", "development"),
+			Port:     getEnv("APP_PORT", "8080"),
+			Env:      getEnv("APP_ENV", "development"),
+			LogLevel: getEnv("LOG_LEVEL", ""),
 		},
 		Postgres: PostgresConfig{
 			Host:     getEnv("POSTGRES_HOST", "localhost"),

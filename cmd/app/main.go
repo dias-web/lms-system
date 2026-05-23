@@ -45,8 +45,9 @@ func main() {
 		panic(err)
 	}
 
-	log := logger.New(cfg.App.Env)
-	log.Infof("Starting LMS Main Service on port %s (env=%s)", cfg.App.Port, cfg.App.Env)
+	log := logger.New(cfg.App.Env, cfg.App.LogLevel)
+	log.Infof("Starting LMS Main Service on port %s (env=%s, level=%s)",
+		cfg.App.Port, cfg.App.Env, log.GetLevel())
 
 	sqlDB, err := database.NewSQL(cfg.Postgres)
 	if err != nil {
@@ -90,7 +91,7 @@ func main() {
 	router := gin.New()
 	router.HandleMethodNotAllowed = true
 	router.Use(
-		gin.Logger(),
+		middleware.RequestLogger(log),
 		middleware.Recovery(log),
 		middleware.ErrorHandler(log),
 	)
