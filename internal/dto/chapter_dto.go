@@ -6,25 +6,34 @@ import (
 	"github.com/dias-web/lms-system/internal/entity"
 )
 
+// CreateChapterRequest is the payload for POST /chapters.
+// course_id is required; the parent course must exist.
+// @name CreateChapterRequest
 type CreateChapterRequest struct {
-	Name        string `json:"name" binding:"required,min=2,max=255"`
-	Description string `json:"description" binding:"max=10000"`
-	Order       int    `json:"order" binding:"gte=0"`
-	CourseID    uint   `json:"course_id" binding:"required"`
+	Name        string `json:"name"        binding:"required,min=2,max=255" example:"Variables and Types"`
+	Description string `json:"description" binding:"max=10000"              example:"Basic types, declaration, scope."`
+	Order       int    `json:"order"       binding:"gte=0"                  example:"1"`
+	CourseID    uint   `json:"course_id"   binding:"required"               example:"1"`
 }
 
+// UpdateChapterRequest is the payload for PUT /chapters/{id}.
+// course_id is intentionally absent: chapters cannot be moved between courses via PUT.
+// @name UpdateChapterRequest
 type UpdateChapterRequest struct {
-	Name        string `json:"name" binding:"required,min=2,max=255"`
-	Description string `json:"description" binding:"max=10000"`
-	Order       int    `json:"order" binding:"gte=0"`
+	Name        string `json:"name"        binding:"required,min=2,max=255" example:"Variables and Types (revised)"`
+	Description string `json:"description" binding:"max=10000"              example:"Basic types, declaration, scope, examples."`
+	Order       int    `json:"order"       binding:"gte=0"                  example:"1"`
 }
 
+// ChapterResponse is returned on chapter read endpoints. Lessons are
+// included only when fetched via /chapters/{id}.
+// @name ChapterResponse
 type ChapterResponse struct {
-	ID          uint             `json:"id"`
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	Order       int              `json:"order"`
-	CourseID    uint             `json:"course_id"`
+	ID          uint             `json:"id"          example:"1"`
+	Name        string           `json:"name"        example:"Variables and Types"`
+	Description string           `json:"description" example:"Basic types, declaration, scope."`
+	Order       int              `json:"order"       example:"1"`
+	CourseID    uint             `json:"course_id"   example:"1"`
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   time.Time        `json:"updated_at"`
 	Lessons     []LessonResponse `json:"lessons,omitempty"`

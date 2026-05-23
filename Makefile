@@ -1,4 +1,4 @@
-.PHONY: help build run tidy test docker-up docker-down docker-build migrate-up migrate-down migrate-create
+.PHONY: help build run tidy test docker-up docker-down docker-build migrate-up migrate-down migrate-create swag swag-install
 
 include .env
 export
@@ -19,6 +19,8 @@ help:
 	@echo "  migrate-up      - apply all pending migrations"
 	@echo "  migrate-down    - roll back the last migration"
 	@echo "  migrate-create  - scaffold a new migration: make migrate-create name=add_users_table"
+	@echo "  swag            - regenerate Swagger docs (docs/) from annotations"
+	@echo "  swag-install    - install the swag CLI ($$GOPATH/bin/swag)"
 
 build:
 	go build -o bin/app ./cmd/app
@@ -50,3 +52,9 @@ migrate-down:
 migrate-create:
 	@if [ -z "$(name)" ]; then echo "usage: make migrate-create name=<migration_name>"; exit 1; fi
 	goose -dir $(MIGRATIONS_DIR) create $(name) sql
+
+swag:
+	swag init -g cmd/app/main.go --parseInternal -o docs
+
+swag-install:
+	go install github.com/swaggo/swag/cmd/swag@latest

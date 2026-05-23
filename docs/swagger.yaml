@@ -1,0 +1,719 @@
+basePath: /
+definitions:
+  dto.ChapterResponse:
+    properties:
+      course_id:
+        example: 1
+        type: integer
+      created_at:
+        type: string
+      description:
+        example: Basic types, declaration, scope.
+        type: string
+      id:
+        example: 1
+        type: integer
+      lessons:
+        items:
+          $ref: '#/definitions/dto.LessonResponse'
+        type: array
+      name:
+        example: Variables and Types
+        type: string
+      order:
+        example: 1
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  dto.CourseResponse:
+    properties:
+      chapters:
+        items:
+          $ref: '#/definitions/dto.ChapterResponse'
+        type: array
+      created_at:
+        type: string
+      description:
+        example: Introductory course on Go programming.
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Golang Developer
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.CreateChapterRequest:
+    properties:
+      course_id:
+        example: 1
+        type: integer
+      description:
+        example: Basic types, declaration, scope.
+        maxLength: 10000
+        type: string
+      name:
+        example: Variables and Types
+        maxLength: 255
+        minLength: 2
+        type: string
+      order:
+        example: 1
+        minimum: 0
+        type: integer
+    required:
+    - course_id
+    - name
+    type: object
+  dto.CreateCourseRequest:
+    properties:
+      description:
+        example: Introductory course on Go programming.
+        maxLength: 10000
+        type: string
+      name:
+        example: Golang Developer
+        maxLength: 255
+        minLength: 2
+        type: string
+    required:
+    - name
+    type: object
+  dto.CreateLessonRequest:
+    properties:
+      chapter_id:
+        example: 1
+        type: integer
+      content:
+        example: In Go, var declares one or more variables...
+        type: string
+      description:
+        example: How to declare variables and infer types.
+        maxLength: 10000
+        type: string
+      name:
+        example: Declaring variables with var
+        maxLength: 255
+        minLength: 2
+        type: string
+      order:
+        example: 1
+        minimum: 0
+        type: integer
+    required:
+    - chapter_id
+    - name
+    type: object
+  dto.ErrorBody:
+    properties:
+      code:
+        example: COURSE_NOT_FOUND
+        type: string
+      message:
+        example: course not found
+        type: string
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/dto.ErrorBody'
+    type: object
+  dto.LessonResponse:
+    properties:
+      chapter_id:
+        example: 1
+        type: integer
+      content:
+        example: In Go, var declares one or more variables...
+        type: string
+      created_at:
+        type: string
+      description:
+        example: How to declare variables and infer types.
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Declaring variables with var
+        type: string
+      order:
+        example: 1
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  dto.UpdateChapterRequest:
+    properties:
+      description:
+        example: Basic types, declaration, scope, examples.
+        maxLength: 10000
+        type: string
+      name:
+        example: Variables and Types (revised)
+        maxLength: 255
+        minLength: 2
+        type: string
+      order:
+        example: 1
+        minimum: 0
+        type: integer
+    required:
+    - name
+    type: object
+  dto.UpdateCourseRequest:
+    properties:
+      description:
+        example: Refreshed course on Go programming.
+        maxLength: 10000
+        type: string
+      name:
+        example: Golang Developer (v2)
+        maxLength: 255
+        minLength: 2
+        type: string
+    required:
+    - name
+    type: object
+  dto.UpdateLessonRequest:
+    properties:
+      content:
+        example: Updated lesson body...
+        type: string
+      description:
+        example: Updated explanation.
+        maxLength: 10000
+        type: string
+      name:
+        example: Declaring variables with var (revised)
+        maxLength: 255
+        minLength: 2
+        type: string
+      order:
+        example: 1
+        minimum: 0
+        type: integer
+    required:
+    - name
+    type: object
+  handler.HealthResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: |-
+    REST API for managing Courses, Chapters and Lessons in the LMS platform.
+    All mutating endpoints (POST/PUT/DELETE) emit structured logs via logrus.
+    Errors are returned in a unified shape: {"error":{"code":"...","message":"..."}}.
+  title: LMS Main Service API
+  version: "1.0"
+paths:
+  /chapters:
+    post:
+      consumes:
+      - application/json
+      description: Creates a chapter under an existing course. course_id is required
+        and validated.
+      parameters:
+      - description: Chapter payload
+        in: body
+        name: chapter
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateChapterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.ChapterResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Parent course not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a new chapter
+      tags:
+      - chapters
+  /chapters/{id}:
+    delete:
+      description: Deletes a chapter. All lessons are cascade-deleted.
+      parameters:
+      - description: Chapter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Chapter not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete a chapter
+      tags:
+      - chapters
+    get:
+      description: Returns a chapter together with its lessons, ordered by lesson.order.
+      parameters:
+      - description: Chapter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ChapterResponse'
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Chapter not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get chapter by ID (with lessons)
+      tags:
+      - chapters
+    put:
+      consumes:
+      - application/json
+      description: Updates chapter name, description and order. course_id cannot be
+        changed via PUT.
+      parameters:
+      - description: Chapter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Chapter payload
+        in: body
+        name: chapter
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateChapterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ChapterResponse'
+        "400":
+          description: Validation failed or invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Chapter not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update an existing chapter
+      tags:
+      - chapters
+  /chapters/{id}/lessons:
+    get:
+      description: Returns all lessons of the given chapter, ordered by lesson.order.
+      parameters:
+      - description: Chapter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.LessonResponse'
+            type: array
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Chapter not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List lessons of a chapter
+      tags:
+      - lessons
+  /courses:
+    get:
+      description: Returns a flat list of courses without nested chapters.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.CourseResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List all courses
+      tags:
+      - courses
+    post:
+      consumes:
+      - application/json
+      description: Creates a course. Name length 2..255. Description up to 10000 chars.
+      parameters:
+      - description: Course payload
+        in: body
+        name: course
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CourseResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a new course
+      tags:
+      - courses
+  /courses/{id}:
+    delete:
+      description: Deletes a course. All chapters and lessons are cascade-deleted.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete a course
+      tags:
+      - courses
+    get:
+      description: Returns a course together with its chapters, ordered by chapter.order.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CourseResponse'
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get course by ID (with chapters)
+      tags:
+      - courses
+    put:
+      consumes:
+      - application/json
+      description: Replaces course name and description. Timestamps are preserved.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Course payload
+        in: body
+        name: course
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CourseResponse'
+        "400":
+          description: Validation failed or invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update an existing course
+      tags:
+      - courses
+  /courses/{id}/chapters:
+    get:
+      description: Returns all chapters of the given course, ordered by chapter.order.
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ChapterResponse'
+            type: array
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Course not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List chapters of a course
+      tags:
+      - chapters
+  /health:
+    get:
+      description: Liveness probe. Returns 200 OK when the service is running.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /lessons:
+    post:
+      consumes:
+      - application/json
+      description: Creates a lesson under an existing chapter. chapter_id is required
+        and validated.
+      parameters:
+      - description: Lesson payload
+        in: body
+        name: lesson
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateLessonRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.LessonResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Parent chapter not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a new lesson
+      tags:
+      - lessons
+  /lessons/{id}:
+    delete:
+      description: Deletes a single lesson.
+      parameters:
+      - description: Lesson ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Lesson not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete a lesson
+      tags:
+      - lessons
+    get:
+      description: Returns a single lesson with its full content.
+      parameters:
+      - description: Lesson ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LessonResponse'
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Lesson not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get lesson by ID
+      tags:
+      - lessons
+    put:
+      consumes:
+      - application/json
+      description: Updates lesson name, content and order. chapter_id cannot be changed
+        via PUT.
+      parameters:
+      - description: Lesson ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Lesson payload
+        in: body
+        name: lesson
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateLessonRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LessonResponse'
+        "400":
+          description: Validation failed or invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Lesson not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update an existing lesson
+      tags:
+      - lessons
+schemes:
+- http
+swagger: "2.0"
+tags:
+- description: Liveness probe.
+  name: health
+- description: Top-level course catalog.
+  name: courses
+- description: Chapters belong to a course.
+  name: chapters
+- description: Lessons belong to a chapter and carry the textual content.
+  name: lessons

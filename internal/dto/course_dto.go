@@ -6,20 +6,27 @@ import (
 	"github.com/dias-web/lms-system/internal/entity"
 )
 
+// CreateCourseRequest is the payload for POST /courses.
+// @name CreateCourseRequest
 type CreateCourseRequest struct {
-	Name        string `json:"name" binding:"required,min=2,max=255"`
-	Description string `json:"description" binding:"max=10000"`
+	Name        string `json:"name"        binding:"required,min=2,max=255" example:"Golang Developer"`
+	Description string `json:"description" binding:"max=10000"              example:"Introductory course on Go programming."`
 }
 
+// UpdateCourseRequest is the payload for PUT /courses/{id}.
+// @name UpdateCourseRequest
 type UpdateCourseRequest struct {
-	Name        string `json:"name" binding:"required,min=2,max=255"`
-	Description string `json:"description" binding:"max=10000"`
+	Name        string `json:"name"        binding:"required,min=2,max=255" example:"Golang Developer (v2)"`
+	Description string `json:"description" binding:"max=10000"              example:"Refreshed course on Go programming."`
 }
 
+// CourseResponse is returned on course read endpoints. Chapters are
+// included only when fetched via /courses/{id}.
+// @name CourseResponse
 type CourseResponse struct {
-	ID          uint              `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
+	ID          uint              `json:"id"          example:"1"`
+	Name        string            `json:"name"        example:"Golang Developer"`
+	Description string            `json:"description" example:"Introductory course on Go programming."`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
 	Chapters    []ChapterResponse `json:"chapters,omitempty"`
