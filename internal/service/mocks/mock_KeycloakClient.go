@@ -79,6 +79,65 @@ func (_c *MockKeycloakClient_CreateUser_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// GetUser provides a mock function with given fields: ctx, userID
+func (_m *MockKeycloakClient) GetUser(ctx context.Context, userID string) (*keycloak.User, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUser")
+	}
+
+	var r0 *keycloak.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*keycloak.User, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *keycloak.User); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*keycloak.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockKeycloakClient_GetUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUser'
+type MockKeycloakClient_GetUser_Call struct {
+	*mock.Call
+}
+
+// GetUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+func (_e *MockKeycloakClient_Expecter) GetUser(ctx interface{}, userID interface{}) *MockKeycloakClient_GetUser_Call {
+	return &MockKeycloakClient_GetUser_Call{Call: _e.mock.On("GetUser", ctx, userID)}
+}
+
+func (_c *MockKeycloakClient_GetUser_Call) Run(run func(ctx context.Context, userID string)) *MockKeycloakClient_GetUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockKeycloakClient_GetUser_Call) Return(_a0 *keycloak.User, _a1 error) *MockKeycloakClient_GetUser_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockKeycloakClient_GetUser_Call) RunAndReturn(run func(context.Context, string) (*keycloak.User, error)) *MockKeycloakClient_GetUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Login provides a mock function with given fields: ctx, username, password
 func (_m *MockKeycloakClient) Login(ctx context.Context, username string, password string) (*keycloak.Token, error) {
 	ret := _m.Called(ctx, username, password)
@@ -194,6 +253,102 @@ func (_c *MockKeycloakClient_Refresh_Call) Return(_a0 *keycloak.Token, _a1 error
 }
 
 func (_c *MockKeycloakClient_Refresh_Call) RunAndReturn(run func(context.Context, string) (*keycloak.Token, error)) *MockKeycloakClient_Refresh_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetPassword provides a mock function with given fields: ctx, userID, newPassword
+func (_m *MockKeycloakClient) SetPassword(ctx context.Context, userID string, newPassword string) error {
+	ret := _m.Called(ctx, userID, newPassword)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetPassword")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, userID, newPassword)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockKeycloakClient_SetPassword_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetPassword'
+type MockKeycloakClient_SetPassword_Call struct {
+	*mock.Call
+}
+
+// SetPassword is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - newPassword string
+func (_e *MockKeycloakClient_Expecter) SetPassword(ctx interface{}, userID interface{}, newPassword interface{}) *MockKeycloakClient_SetPassword_Call {
+	return &MockKeycloakClient_SetPassword_Call{Call: _e.mock.On("SetPassword", ctx, userID, newPassword)}
+}
+
+func (_c *MockKeycloakClient_SetPassword_Call) Run(run func(ctx context.Context, userID string, newPassword string)) *MockKeycloakClient_SetPassword_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockKeycloakClient_SetPassword_Call) Return(_a0 error) *MockKeycloakClient_SetPassword_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockKeycloakClient_SetPassword_Call) RunAndReturn(run func(context.Context, string, string) error) *MockKeycloakClient_SetPassword_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateUser provides a mock function with given fields: ctx, userID, in
+func (_m *MockKeycloakClient) UpdateUser(ctx context.Context, userID string, in keycloak.UpdateUserInput) error {
+	ret := _m.Called(ctx, userID, in)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateUser")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, keycloak.UpdateUserInput) error); ok {
+		r0 = rf(ctx, userID, in)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockKeycloakClient_UpdateUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUser'
+type MockKeycloakClient_UpdateUser_Call struct {
+	*mock.Call
+}
+
+// UpdateUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - in keycloak.UpdateUserInput
+func (_e *MockKeycloakClient_Expecter) UpdateUser(ctx interface{}, userID interface{}, in interface{}) *MockKeycloakClient_UpdateUser_Call {
+	return &MockKeycloakClient_UpdateUser_Call{Call: _e.mock.On("UpdateUser", ctx, userID, in)}
+}
+
+func (_c *MockKeycloakClient_UpdateUser_Call) Run(run func(ctx context.Context, userID string, in keycloak.UpdateUserInput)) *MockKeycloakClient_UpdateUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(keycloak.UpdateUserInput))
+	})
+	return _c
+}
+
+func (_c *MockKeycloakClient_UpdateUser_Call) Return(_a0 error) *MockKeycloakClient_UpdateUser_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockKeycloakClient_UpdateUser_Call) RunAndReturn(run func(context.Context, string, keycloak.UpdateUserInput) error) *MockKeycloakClient_UpdateUser_Call {
 	_c.Call.Return(run)
 	return _c
 }

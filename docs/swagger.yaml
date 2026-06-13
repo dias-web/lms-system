@@ -1,5 +1,18 @@
 basePath: /
 definitions:
+  ChangePasswordRequest:
+    properties:
+      new_password:
+        example: NewPass456
+        minLength: 6
+        type: string
+      old_password:
+        example: OldPass123
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
   LoginRequest:
     properties:
       password:
@@ -69,6 +82,20 @@ definitions:
         type: string
       token_type:
         example: Bearer
+        type: string
+    type: object
+  UpdateProfileRequest:
+    properties:
+      email:
+        example: new@lms.local
+        type: string
+      first_name:
+        example: John
+        maxLength: 255
+        type: string
+      last_name:
+        example: Doe
+        maxLength: 255
         type: string
     type: object
   UserResponse:
@@ -337,6 +364,76 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Authenticate and obtain tokens
+      tags:
+      - auth
+  /auth/password:
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Changes the authenticated user's password. The current
+        password must be supplied and is verified first.
+      parameters:
+      - description: Old and new passwords
+        in: body
+        name: passwords
+        required: true
+        schema:
+          $ref: '#/definitions/ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing token or wrong current password
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change own password
+      tags:
+      - auth
+  /auth/profile:
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Updates the authenticated user's email and name. Roles cannot
+        be changed here — only an admin can assign roles.
+      parameters:
+      - description: Profile fields
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Email already taken
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update own profile
       tags:
       - auth
   /auth/refresh:

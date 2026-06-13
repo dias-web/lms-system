@@ -65,6 +65,18 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 	}
 }
 
+// InjectClaims returns middleware that stores the given claims in the context,
+// bypassing token parsing. Useful for wiring trusted internal callers or for
+// handler tests that exercise endpoints without a real token.
+func InjectClaims(claims *auth.Claims) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set(ctxClaims, claims)
+		c.Set(ctxUsername, claims.PreferredUsername)
+		c.Set(ctxRoles, claims.RealmAccess.Roles)
+		c.Next()
+	}
+}
+
 // CurrentClaims returns the authenticated user's claims, if any.
 func CurrentClaims(c *gin.Context) (*auth.Claims, bool) {
 	v, ok := c.Get(ctxClaims)

@@ -61,6 +61,111 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/password": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Changes the authenticated user's password. The current\npassword must be supplied and is verified first.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Change own password",
+                "parameters": [
+                    {
+                        "description": "Old and new passwords",
+                        "name": "passwords",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Password changed"
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing token or wrong current password",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/profile": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the authenticated user's email and name. Roles cannot\nbe changed here — only an admin can assign roles.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Update own profile",
+                "parameters": [
+                    {
+                        "description": "Profile fields",
+                        "name": "profile",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already taken",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/refresh": {
             "post": {
                 "description": "Exchanges a valid refresh token for a new access/refresh token\npair. Used when the 5-minute access token expires.",
@@ -907,6 +1012,24 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "new_password",
+                "old_password"
+            ],
+            "properties": {
+                "new_password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "NewPass456"
+                },
+                "old_password": {
+                    "type": "string",
+                    "example": "OldPass123"
+                }
+            }
+        },
         "LoginRequest": {
             "type": "object",
             "required": [
@@ -1001,6 +1124,25 @@ const docTemplate = `{
                 "token_type": {
                     "type": "string",
                     "example": "Bearer"
+                }
+            }
+        },
+        "UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "new@lms.local"
+                },
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "John"
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Doe"
                 }
             }
         },

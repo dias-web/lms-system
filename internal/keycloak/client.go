@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/dias-web/lms-system/internal/config"
@@ -126,6 +127,99 @@ func (c *Client) CreateUser(ctx context.Context, in CreateUserInput) (string, er
 	return userID, nil
 }
 
+// User is a neutral view of a Keycloak user with its primary realm role.
+type User struct {
+	ID        string
+	Username  string
+	Email     string
+	FirstName string
+	LastName  string
+	Role      string
+}
+
+// UpdateUserInput carries the profile fields a user may change. Empty fields
+// are left untouched. Roles are intentionally absent — only admins assign them.
+type UpdateUserInput struct {
+	Email     string
+	FirstName string
+	LastName  string
+}
+
+// GetUser returns a user together with its first realm role (ROLE_*).
+func (c *Client) GetUser(ctx context.Context, userID string) (*User, error) {
+	token, err := c.adminToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	u, err := c.gc.GetUserByID(ctx, token, c.realm, userID)
+	if err != nil {
+		return nil, mapUserError(err)
+	}
+	role, err := c.primaryRealmRole(ctx, token, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &User{
+		ID:        deref(u.ID),
+		Username:  deref(u.Username),
+		Email:     deref(u.Email),
+		FirstName: deref(u.FirstName),
+		LastName:  deref(u.LastName),
+		Role:      role,
+	}, nil
+}
+
+// UpdateUser applies the non-empty profile fields to an existing user. It reads
+// the current representation first so unspecified fields are preserved.
+func (c *Client) UpdateUser(ctx context.Context, userID string, in UpdateUserInput) error {
+	token, err := c.adminToken(ctx)
+	if err != nil {
+		return err
+	}
+	u, err := c.gc.GetUserByID(ctx, token, c.realm, userID)
+	if err != nil {
+		return mapUserError(err)
+	}
+	if in.Email != "" {
+		u.Email = gocloak.StringP(in.Email)
+	}
+	if in.FirstName != "" {
+		u.FirstName = gocloak.StringP(in.FirstName)
+	}
+	if in.LastName != "" {
+		u.LastName = gocloak.StringP(in.LastName)
+	}
+	if err := c.gc.UpdateUser(ctx, token, c.realm, *u); err != nil {
+		return mapUserError(err)
+	}
+	return nil
+}
+
+// SetPassword sets a new permanent password for the user.
+func (c *Client) SetPassword(ctx context.Context, userID, newPassword string) error {
+	token, err := c.adminToken(ctx)
+	if err != nil {
+		return err
+	}
+	if err := c.gc.SetPassword(ctx, token, userID, c.realm, newPassword, false); err != nil {
+		return mapUserError(err)
+	}
+	return nil
+}
+
+func (c *Client) primaryRealmRole(ctx context.Context, token, userID string) (string, error) {
+	roles, err := c.gc.GetRealmRolesByUserID(ctx, token, c.realm, userID)
+	if err != nil {
+		return "", err
+	}
+	for _, r := range roles {
+		if name := deref(r.Name); strings.HasPrefix(name, "ROLE_") {
+			return name, nil
+		}
+	}
+	return "", nil
+}
+
 func (c *Client) assignRealmRole(ctx context.Context, token, userID, roleName string) error {
 	role, err := c.gc.GetRealmRole(ctx, token, c.realm, roleName)
 	if err != nil {
@@ -152,6 +246,28 @@ func translateError(err error) error {
 		return ErrInvalidCredentials
 	}
 	return err
+}
+
+// mapUserError maps admin user-management errors: 404 -> ErrUserNotFound,
+// 409 -> ErrUserExists (e.g. email already taken), everything else unchanged.
+func mapUserError(err error) error {
+	var apiErr *gocloak.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.Code {
+		case http.StatusNotFound:
+			return ErrUserNotFound
+		case http.StatusConflict:
+			return ErrUserExists
+		}
+	}
+	return err
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func toToken(jwt *gocloak.JWT) *Token {

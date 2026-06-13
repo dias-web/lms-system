@@ -22,6 +22,55 @@ func (_m *MockAuthService) EXPECT() *MockAuthService_Expecter {
 	return &MockAuthService_Expecter{mock: &_m.Mock}
 }
 
+// ChangePassword provides a mock function with given fields: ctx, userID, username, req
+func (_m *MockAuthService) ChangePassword(ctx context.Context, userID string, username string, req dto.ChangePasswordRequest) error {
+	ret := _m.Called(ctx, userID, username, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChangePassword")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, dto.ChangePasswordRequest) error); ok {
+		r0 = rf(ctx, userID, username, req)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAuthService_ChangePassword_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChangePassword'
+type MockAuthService_ChangePassword_Call struct {
+	*mock.Call
+}
+
+// ChangePassword is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - username string
+//   - req dto.ChangePasswordRequest
+func (_e *MockAuthService_Expecter) ChangePassword(ctx interface{}, userID interface{}, username interface{}, req interface{}) *MockAuthService_ChangePassword_Call {
+	return &MockAuthService_ChangePassword_Call{Call: _e.mock.On("ChangePassword", ctx, userID, username, req)}
+}
+
+func (_c *MockAuthService_ChangePassword_Call) Run(run func(ctx context.Context, userID string, username string, req dto.ChangePasswordRequest)) *MockAuthService_ChangePassword_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(dto.ChangePasswordRequest))
+	})
+	return _c
+}
+
+func (_c *MockAuthService_ChangePassword_Call) Return(_a0 error) *MockAuthService_ChangePassword_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAuthService_ChangePassword_Call) RunAndReturn(run func(context.Context, string, string, dto.ChangePasswordRequest) error) *MockAuthService_ChangePassword_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Login provides a mock function with given fields: ctx, req
 func (_m *MockAuthService) Login(ctx context.Context, req dto.LoginRequest) (dto.TokenResponse, error) {
 	ret := _m.Called(ctx, req)
@@ -189,6 +238,64 @@ func (_c *MockAuthService_Register_Call) Return(_a0 dto.UserResponse, _a1 error)
 }
 
 func (_c *MockAuthService_Register_Call) RunAndReturn(run func(context.Context, dto.RegisterRequest) (dto.UserResponse, error)) *MockAuthService_Register_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateProfile provides a mock function with given fields: ctx, userID, req
+func (_m *MockAuthService) UpdateProfile(ctx context.Context, userID string, req dto.UpdateProfileRequest) (dto.UserResponse, error) {
+	ret := _m.Called(ctx, userID, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateProfile")
+	}
+
+	var r0 dto.UserResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, dto.UpdateProfileRequest) (dto.UserResponse, error)); ok {
+		return rf(ctx, userID, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, dto.UpdateProfileRequest) dto.UserResponse); ok {
+		r0 = rf(ctx, userID, req)
+	} else {
+		r0 = ret.Get(0).(dto.UserResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, dto.UpdateProfileRequest) error); ok {
+		r1 = rf(ctx, userID, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAuthService_UpdateProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateProfile'
+type MockAuthService_UpdateProfile_Call struct {
+	*mock.Call
+}
+
+// UpdateProfile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - req dto.UpdateProfileRequest
+func (_e *MockAuthService_Expecter) UpdateProfile(ctx interface{}, userID interface{}, req interface{}) *MockAuthService_UpdateProfile_Call {
+	return &MockAuthService_UpdateProfile_Call{Call: _e.mock.On("UpdateProfile", ctx, userID, req)}
+}
+
+func (_c *MockAuthService_UpdateProfile_Call) Run(run func(ctx context.Context, userID string, req dto.UpdateProfileRequest)) *MockAuthService_UpdateProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(dto.UpdateProfileRequest))
+	})
+	return _c
+}
+
+func (_c *MockAuthService_UpdateProfile_Call) Return(_a0 dto.UserResponse, _a1 error) *MockAuthService_UpdateProfile_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAuthService_UpdateProfile_Call) RunAndReturn(run func(context.Context, string, dto.UpdateProfileRequest) (dto.UserResponse, error)) *MockAuthService_UpdateProfile_Call {
 	_c.Call.Return(run)
 	return _c
 }

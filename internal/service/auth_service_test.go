@@ -153,3 +153,77 @@ func TestAuthService_Register_KeycloakDown(t *testing.T) {
 	assert.ErrorIs(t, err, boom)
 	assert.NotErrorIs(t, err, ErrConflict)
 }
+
+func TestAuthService_UpdateProfile_Success(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	kc.EXPECT().
+		UpdateUser(mock.Anything, "uid-1", keycloak.UpdateUserInput{
+			Email: "new@lms.local", FirstName: "New", LastName: "Name",
+		}).
+		Return(nil)
+	// Service reloads to return fresh state including the unchanged role.
+	kc.EXPECT().GetUser(mock.Anything, "uid-1").Return(&keycloak.User{
+		ID: "uid-1", Username: "jdoe", Email: "new@lms.local",
+		FirstName: "New", LastName: "Name", Role: "ROLE_USER",
+	}, nil)
+
+	resp, err := svc.UpdateProfile(context.Background(), "uid-1", dto.UpdateProfileRequest{
+		Email: "new@lms.local", FirstName: "New", LastName: "Name",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "new@lms.local", resp.Email)
+	assert.Equal(t, "ROLE_USER", resp.Role) // role preserved, not changeable here
+}
+
+func TestAuthService_UpdateProfile_EmailConflict(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	kc.EXPECT().UpdateUser(mock.Anything, "uid-1", mock.Anything).
+		Return(keycloak.ErrUserExists)
+
+	_, err := svc.UpdateProfile(context.Background(), "uid-1", dto.UpdateProfileRequest{
+		Email: "taken@lms.local",
+	})
+	assert.ErrorIs(t, err, ErrConflict)
+}
+
+func TestAuthService_UpdateProfile_NotFound(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	kc.EXPECT().UpdateUser(mock.Anything, "ghost", mock.Anything).
+		Return(keycloak.ErrUserNotFound)
+
+	_, err := svc.UpdateProfile(context.Background(), "ghost", dto.UpdateProfileRequest{FirstName: "X"})
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestAuthService_ChangePassword_Success(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	// current password verified via login, then new password set.
+	kc.EXPECT().Login(mock.Anything, "jdoe", "oldpass").Return(&keycloak.Token{AccessToken: "x"}, nil)
+	kc.EXPECT().SetPassword(mock.Anything, "uid-1", "newpass123").Return(nil)
+
+	err := svc.ChangePassword(context.Background(), "uid-1", "jdoe", dto.ChangePasswordRequest{
+		OldPassword: "oldpass", NewPassword: "newpass123",
+	})
+	require.NoError(t, err)
+}
+
+func TestAuthService_ChangePassword_WrongCurrent(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	kc.EXPECT().Login(mock.Anything, "jdoe", "wrong").
+		Return(nil, keycloak.ErrInvalidCredentials)
+
+	err := svc.ChangePassword(context.Background(), "uid-1", "jdoe", dto.ChangePasswordRequest{
+		OldPassword: "wrong", NewPassword: "newpass123",
+	})
+	assert.ErrorIs(t, err, ErrUnauthorized)
+}

@@ -7,17 +7,33 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/dias-web/lms-system/internal/auth"
 	"github.com/dias-web/lms-system/internal/dto"
+	"github.com/dias-web/lms-system/internal/middleware"
 	"github.com/dias-web/lms-system/internal/service"
 	svcmocks "github.com/dias-web/lms-system/internal/service/mocks"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
+// testClaims is the identity injected into the auth router for handler tests:
+// a user with id "test-user-id" / username "tester".
+func testClaims() *auth.Claims {
+	cl := &auth.Claims{PreferredUsername: "tester"}
+	cl.Subject = "test-user-id"
+	cl.RealmAccess.Roles = []string{"ROLE_USER"}
+	return cl
+}
+
 func setupAuthRouter(t *testing.T) (*svcmocks.MockAuthService, http.Handler) {
 	svc := svcmocks.NewMockAuthService(t)
 	r := newTestRouter()
-	NewAuthHandler(svc).Register(r)
+	// Inject a fixed authenticated user; the admin guard is a no-op so handler
+	// logic (not the role check) is what these tests exercise.
+	authStub := middleware.InjectClaims(testClaims())
+	adminStub := func(c *gin.Context) { c.Next() }
+	NewAuthHandler(svc).Register(r, authStub, adminStub)
 	return svc, r
 }
 
@@ -187,4 +203,91 @@ func TestAuthHandler_Register_InvalidRole(t *testing.T) {
 	var resp dto.ErrorResponse
 	decodeJSON(t, w, &resp)
 	assert.Equal(t, "INVALID_INPUT", resp.Error.Code)
+}
+
+func TestAuthHandler_UpdateProfile_OK(t *testing.T) {
+	svc, r := setupAuthRouter(t)
+	// userID comes from injected claims (Subject = "test-user-id")
+	svc.EXPECT().
+		UpdateProfile(mock.Anything, "test-user-id", dto.UpdateProfileRequest{
+			Email: "new@lms.local", FirstName: "New", LastName: "Name",
+		}).
+		Return(dto.UserResponse{ID: "test-user-id", Username: "tester", Email: "new@lms.local", Role: "ROLE_USER"}, nil)
+
+	body := bytes.NewBufferString(`{"email":"new@lms.local","first_name":"New","last_name":"Name"}`)
+	req := httptest.NewRequest(http.MethodPut, "/auth/profile", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp dto.UserResponse
+	decodeJSON(t, w, &resp)
+	assert.Equal(t, "new@lms.local", resp.Email)
+	assert.Equal(t, "ROLE_USER", resp.Role)
+}
+
+func TestAuthHandler_UpdateProfile_InvalidEmail(t *testing.T) {
+	_, r := setupAuthRouter(t)
+
+	body := bytes.NewBufferString(`{"email":"not-an-email"}`)
+	req := httptest.NewRequest(http.MethodPut, "/auth/profile", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestAuthHandler_ChangePassword_OK(t *testing.T) {
+	svc, r := setupAuthRouter(t)
+	svc.EXPECT().
+		ChangePassword(mock.Anything, "test-user-id", "tester", dto.ChangePasswordRequest{
+			OldPassword: "oldpass", NewPassword: "newpass123",
+		}).
+		Return(nil)
+
+	body := bytes.NewBufferString(`{"old_password":"oldpass","new_password":"newpass123"}`)
+	req := httptest.NewRequest(http.MethodPut, "/auth/password", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Empty(t, w.Body.String())
+}
+
+func TestAuthHandler_ChangePassword_WrongCurrent(t *testing.T) {
+	svc, r := setupAuthRouter(t)
+	svc.EXPECT().ChangePassword(mock.Anything, "test-user-id", "tester", mock.Anything).
+		Return(fmt.Errorf("%w: current password is incorrect", service.ErrUnauthorized))
+
+	body := bytes.NewBufferString(`{"old_password":"wrong","new_password":"newpass123"}`)
+	req := httptest.NewRequest(http.MethodPut, "/auth/password", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	var resp dto.ErrorResponse
+	decodeJSON(t, w, &resp)
+	assert.Equal(t, "UNAUTHORIZED", resp.Error.Code)
+}
+
+func TestAuthHandler_ChangePassword_ValidationError(t *testing.T) {
+	_, r := setupAuthRouter(t)
+
+	// new_password too short (min=6)
+	body := bytes.NewBufferString(`{"old_password":"oldpass","new_password":"123"}`)
+	req := httptest.NewRequest(http.MethodPut, "/auth/password", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

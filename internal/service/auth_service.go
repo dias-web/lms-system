@@ -16,12 +16,17 @@ type KeycloakClient interface {
 	Login(ctx context.Context, username, password string) (*keycloak.Token, error)
 	Refresh(ctx context.Context, refreshToken string) (*keycloak.Token, error)
 	CreateUser(ctx context.Context, in keycloak.CreateUserInput) (string, error)
+	GetUser(ctx context.Context, userID string) (*keycloak.User, error)
+	UpdateUser(ctx context.Context, userID string, in keycloak.UpdateUserInput) error
+	SetPassword(ctx context.Context, userID, newPassword string) error
 }
 
 type AuthService interface {
 	Login(ctx context.Context, req dto.LoginRequest) (dto.TokenResponse, error)
 	Refresh(ctx context.Context, req dto.RefreshRequest) (dto.TokenResponse, error)
 	Register(ctx context.Context, req dto.RegisterRequest) (dto.UserResponse, error)
+	UpdateProfile(ctx context.Context, userID string, req dto.UpdateProfileRequest) (dto.UserResponse, error)
+	ChangePassword(ctx context.Context, userID, username string, req dto.ChangePasswordRequest) error
 }
 
 type authService struct {
@@ -102,6 +107,79 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 		LastName:  req.LastName,
 		Role:      req.Role,
 	}, nil
+}
+
+func (s *authService) UpdateProfile(ctx context.Context, userID string, req dto.UpdateProfileRequest) (dto.UserResponse, error) {
+	s.log.WithField("user_id", userID).Info("Updating user profile")
+	s.log.WithFields(logrus.Fields{
+		"user_id":    userID,
+		"email_set":  req.Email != "",
+		"name_fields": req.FirstName != "" || req.LastName != "",
+	}).Debug("profile update payload")
+
+	if err := s.kc.UpdateUser(ctx, userID, keycloak.UpdateUserInput{
+		Email:     req.Email,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+	}); err != nil {
+		return dto.UserResponse{}, mapUserManagementErr(s, userID, err)
+	}
+
+	// Return the fresh server-side state, including the unchanged role.
+	user, err := s.kc.GetUser(ctx, userID)
+	if err != nil {
+		s.log.WithError(err).WithField("user_id", userID).Error("profile updated but reload failed")
+		return dto.UserResponse{}, err
+	}
+
+	s.log.WithField("user_id", userID).Info("user profile updated")
+	return dto.UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Role:      user.Role,
+	}, nil
+}
+
+func (s *authService) ChangePassword(ctx context.Context, userID, username string, req dto.ChangePasswordRequest) error {
+	s.log.WithField("user_id", userID).Info("Changing user password")
+
+	// Verify the current password by attempting a login, so a stolen access
+	// token alone cannot reset the password.
+	if _, err := s.kc.Login(ctx, username, req.OldPassword); err != nil {
+		if errors.Is(err, keycloak.ErrInvalidCredentials) {
+			s.log.WithField("user_id", userID).Warn("password change failed: wrong current password")
+			return fmt.Errorf("%w: current password is incorrect", ErrUnauthorized)
+		}
+		s.log.WithError(err).WithField("user_id", userID).Error("password change failed: keycloak error")
+		return err
+	}
+
+	if err := s.kc.SetPassword(ctx, userID, req.NewPassword); err != nil {
+		s.log.WithError(err).WithField("user_id", userID).Error("password change failed: set password")
+		return err
+	}
+
+	s.log.WithField("user_id", userID).Info("user password changed")
+	return nil
+}
+
+// mapUserManagementErr translates not-found / conflict errors from the admin
+// user API into domain errors, logging at the appropriate level.
+func mapUserManagementErr(s *authService, userID string, err error) error {
+	switch {
+	case errors.Is(err, keycloak.ErrUserNotFound):
+		s.log.WithField("user_id", userID).Warn("user not found")
+		return fmt.Errorf("%w: user not found", ErrNotFound)
+	case errors.Is(err, keycloak.ErrUserExists):
+		s.log.WithField("user_id", userID).Warn("email already taken")
+		return fmt.Errorf("%w: email already taken", ErrConflict)
+	default:
+		s.log.WithError(err).WithField("user_id", userID).Error("user management failed")
+		return err
+	}
 }
 
 func toTokenResponse(t *keycloak.Token) dto.TokenResponse {

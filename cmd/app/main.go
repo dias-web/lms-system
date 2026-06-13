@@ -121,8 +121,7 @@ func main() {
 	// user registration requires a valid token carrying ROLE_ADMIN.
 	kcClient := keycloak.NewClient(cfg.Keycloak)
 	authSvc := service.NewAuthService(kcClient, log)
-	adminOnly := []gin.HandlerFunc{authRequired, middleware.RequireRole("ROLE_ADMIN")}
-	handler.NewAuthHandler(authSvc).Register(router, adminOnly...)
+	handler.NewAuthHandler(authSvc).Register(router, authRequired, middleware.RequireRole("ROLE_ADMIN"))
 
 	// Mutations require a valid token; reads stay public.
 	handler.NewCourseHandler(courseSvc).Register(router, authRequired)
