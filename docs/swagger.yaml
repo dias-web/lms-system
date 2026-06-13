@@ -20,6 +20,41 @@ definitions:
     required:
     - refresh_token
     type: object
+  RegisterRequest:
+    properties:
+      email:
+        example: jdoe@lms.local
+        type: string
+      first_name:
+        example: John
+        maxLength: 255
+        type: string
+      last_name:
+        example: Doe
+        maxLength: 255
+        type: string
+      password:
+        example: Str0ngPass
+        minLength: 6
+        type: string
+      role:
+        enum:
+        - ROLE_ADMIN
+        - ROLE_TEACHER
+        - ROLE_USER
+        example: ROLE_USER
+        type: string
+      username:
+        example: jdoe
+        maxLength: 255
+        minLength: 2
+        type: string
+    required:
+    - email
+    - password
+    - role
+    - username
+    type: object
   TokenResponse:
     properties:
       access_token:
@@ -34,6 +69,27 @@ definitions:
         type: string
       token_type:
         example: Bearer
+        type: string
+    type: object
+  UserResponse:
+    properties:
+      email:
+        example: jdoe@lms.local
+        type: string
+      first_name:
+        example: John
+        type: string
+      id:
+        example: b1c2d3e4-....
+        type: string
+      last_name:
+        example: Doe
+        type: string
+      role:
+        example: ROLE_USER
+        type: string
+      username:
+        example: jdoe
         type: string
     type: object
   dto.ChapterResponse:
@@ -313,6 +369,48 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Creates a Keycloak user and assigns a realm role. Requires a
+        valid token carrying ROLE_ADMIN.
+      parameters:
+      - description: New user
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/UserResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Caller is not an admin
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Username or email already taken
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Register a new user (admin only)
       tags:
       - auth
   /chapters:
@@ -807,13 +905,10 @@ paths:
       - lessons
 schemes:
 - http
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and a JWT access token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
-tags:
-- description: Liveness probe.
-  name: health
-- description: Top-level course catalog.
-  name: courses
-- description: Chapters belong to a course.
-  name: chapters
-- description: Lessons belong to a chapter and carry the textual content.
-  name: lessons

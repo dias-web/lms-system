@@ -9,6 +9,11 @@
 //	@BasePath		/
 //	@schemes		http
 //
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Type "Bearer" followed by a space and a JWT access token.
+//
 //	@tag.name		health
 //	@tag.description	Liveness probe.
 //	@tag.name		courses
@@ -112,10 +117,12 @@ func main() {
 	authRequired := middleware.AuthRequired(validator, log)
 	log.Infof("Auth enabled: validating JWTs issued by %s", cfg.Keycloak.Issuer())
 
-	// Keycloak-backed authentication endpoints (login/refresh).
+	// Keycloak-backed authentication endpoints. login/refresh are public;
+	// user registration requires a valid token carrying ROLE_ADMIN.
 	kcClient := keycloak.NewClient(cfg.Keycloak)
 	authSvc := service.NewAuthService(kcClient, log)
-	handler.NewAuthHandler(authSvc).Register(router)
+	adminOnly := []gin.HandlerFunc{authRequired, middleware.RequireRole("ROLE_ADMIN")}
+	handler.NewAuthHandler(authSvc).Register(router, adminOnly...)
 
 	// Mutations require a valid token; reads stay public.
 	handler.NewCourseHandler(courseSvc).Register(router, authRequired)

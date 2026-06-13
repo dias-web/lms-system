@@ -20,10 +20,12 @@ type AppConfig struct {
 }
 
 type KeycloakConfig struct {
-	URL          string // base URL, e.g. http://localhost:8081
-	Realm        string // realm name, e.g. lms
-	ClientID     string // confidential client used by the backend
-	ClientSecret string // client secret for admin/token operations
+	URL           string // base URL, e.g. http://localhost:8081
+	Realm         string // realm name, e.g. lms
+	ClientID      string // confidential client used by the backend
+	ClientSecret  string // client secret for admin/token operations
+	AdminUser     string // master-realm admin used for user management
+	AdminPassword string
 }
 
 // Issuer is the expected "iss" claim and JWKS base for the realm.
@@ -63,10 +65,12 @@ func Load() (*Config, error) {
 			SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
 		},
 		Keycloak: KeycloakConfig{
-			URL:          getEnv("KEYCLOAK_URL", "http://localhost:8081"),
-			Realm:        getEnv("KEYCLOAK_REALM", "lms"),
-			ClientID:     getEnv("KEYCLOAK_CLIENT_ID", "lms-backend"),
-			ClientSecret: getEnv("KEYCLOAK_CLIENT_SECRET", ""),
+			URL:           getEnv("KEYCLOAK_URL", "http://localhost:8081"),
+			Realm:         getEnv("KEYCLOAK_REALM", "lms"),
+			ClientID:      getEnv("KEYCLOAK_CLIENT_ID", "lms-backend"),
+			ClientSecret:  getEnv("KEYCLOAK_CLIENT_SECRET", ""),
+			AdminUser:     getEnv("KEYCLOAK_ADMIN_USERNAME", "admin"),
+			AdminPassword: getEnv("KEYCLOAK_ADMIN_PASSWORD", "admin"),
 		},
 	}
 

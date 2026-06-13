@@ -10,4 +10,5 @@ var (
 	ErrLessonNotFound  = errors.New("lesson not found")
 	ErrUnauthorized    = errors.New("unauthorized")
 	ErrForbidden       = errors.New("forbidden")
+	ErrConflict        = errors.New("conflict")
 )

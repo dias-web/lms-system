@@ -16,11 +16,12 @@ func NewAuthHandler(svc service.AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 
-// Register wires the authentication routes. These are public — they are how a
-// client obtains a token in the first place.
-func (h *AuthHandler) Register(r *gin.Engine) {
+// Register wires the authentication routes. login/refresh are public; the
+// adminOnly handlers (auth + ROLE_ADMIN guard) protect user registration.
+func (h *AuthHandler) Register(r *gin.Engine, adminOnly ...gin.HandlerFunc) {
 	r.POST("/auth/login", h.Login)
 	r.POST("/auth/refresh", h.Refresh)
+	r.POST("/auth/register", chain(adminOnly, h.RegisterUser)...)
 }
 
 // Login godoc
@@ -73,4 +74,33 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, tokens)
+}
+
+// RegisterUser godoc
+// @Summary      Register a new user (admin only)
+// @Description  Creates a Keycloak user and assigns a realm role. Requires a
+// @Description  valid token carrying ROLE_ADMIN.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        user  body      dto.RegisterRequest  true  "New user"
+// @Success      201  {object}  dto.UserResponse
+// @Failure      400  {object}  dto.ErrorResponse  "Validation failed"
+// @Failure      401  {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403  {object}  dto.ErrorResponse  "Caller is not an admin"
+// @Failure      409  {object}  dto.ErrorResponse  "Username or email already taken"
+// @Router       /auth/register [post]
+func (h *AuthHandler) RegisterUser(c *gin.Context) {
+	var req dto.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(bindError(err))
+		return
+	}
+	user, err := h.svc.Register(c.Request.Context(), req)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusCreated, user)
 }

@@ -136,6 +136,63 @@ func (_c *MockAuthService_Refresh_Call) RunAndReturn(run func(context.Context, d
 	return _c
 }
 
+// Register provides a mock function with given fields: ctx, req
+func (_m *MockAuthService) Register(ctx context.Context, req dto.RegisterRequest) (dto.UserResponse, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Register")
+	}
+
+	var r0 dto.UserResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dto.RegisterRequest) (dto.UserResponse, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dto.RegisterRequest) dto.UserResponse); ok {
+		r0 = rf(ctx, req)
+	} else {
+		r0 = ret.Get(0).(dto.UserResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dto.RegisterRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAuthService_Register_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Register'
+type MockAuthService_Register_Call struct {
+	*mock.Call
+}
+
+// Register is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req dto.RegisterRequest
+func (_e *MockAuthService_Expecter) Register(ctx interface{}, req interface{}) *MockAuthService_Register_Call {
+	return &MockAuthService_Register_Call{Call: _e.mock.On("Register", ctx, req)}
+}
+
+func (_c *MockAuthService_Register_Call) Run(run func(ctx context.Context, req dto.RegisterRequest)) *MockAuthService_Register_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(dto.RegisterRequest))
+	})
+	return _c
+}
+
+func (_c *MockAuthService_Register_Call) Return(_a0 dto.UserResponse, _a1 error) *MockAuthService_Register_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAuthService_Register_Call) RunAndReturn(run func(context.Context, dto.RegisterRequest) (dto.UserResponse, error)) *MockAuthService_Register_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockAuthService creates a new instance of MockAuthService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockAuthService(t interface {

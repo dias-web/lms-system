@@ -22,6 +22,63 @@ func (_m *MockKeycloakClient) EXPECT() *MockKeycloakClient_Expecter {
 	return &MockKeycloakClient_Expecter{mock: &_m.Mock}
 }
 
+// CreateUser provides a mock function with given fields: ctx, in
+func (_m *MockKeycloakClient) CreateUser(ctx context.Context, in keycloak.CreateUserInput) (string, error) {
+	ret := _m.Called(ctx, in)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateUser")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, keycloak.CreateUserInput) (string, error)); ok {
+		return rf(ctx, in)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, keycloak.CreateUserInput) string); ok {
+		r0 = rf(ctx, in)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, keycloak.CreateUserInput) error); ok {
+		r1 = rf(ctx, in)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockKeycloakClient_CreateUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateUser'
+type MockKeycloakClient_CreateUser_Call struct {
+	*mock.Call
+}
+
+// CreateUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in keycloak.CreateUserInput
+func (_e *MockKeycloakClient_Expecter) CreateUser(ctx interface{}, in interface{}) *MockKeycloakClient_CreateUser_Call {
+	return &MockKeycloakClient_CreateUser_Call{Call: _e.mock.On("CreateUser", ctx, in)}
+}
+
+func (_c *MockKeycloakClient_CreateUser_Call) Run(run func(ctx context.Context, in keycloak.CreateUserInput)) *MockKeycloakClient_CreateUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(keycloak.CreateUserInput))
+	})
+	return _c
+}
+
+func (_c *MockKeycloakClient_CreateUser_Call) Return(_a0 string, _a1 error) *MockKeycloakClient_CreateUser_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockKeycloakClient_CreateUser_Call) RunAndReturn(run func(context.Context, keycloak.CreateUserInput) (string, error)) *MockKeycloakClient_CreateUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Login provides a mock function with given fields: ctx, username, password
 func (_m *MockKeycloakClient) Login(ctx context.Context, username string, password string) (*keycloak.Token, error) {
 	ret := _m.Called(ctx, username, password)

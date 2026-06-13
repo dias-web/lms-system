@@ -131,3 +131,60 @@ func TestAuthHandler_Refresh_ValidationError(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestAuthHandler_Register_OK(t *testing.T) {
+	svc, r := setupAuthRouter(t)
+	svc.EXPECT().
+		Register(mock.Anything, dto.RegisterRequest{
+			Username: "jdoe", Email: "jdoe@lms.local", Password: "secret123",
+			FirstName: "John", LastName: "Doe", Role: "ROLE_USER",
+		}).
+		Return(dto.UserResponse{ID: "uuid-1", Username: "jdoe", Role: "ROLE_USER"}, nil)
+
+	body := bytes.NewBufferString(`{"username":"jdoe","email":"jdoe@lms.local","password":"secret123","first_name":"John","last_name":"Doe","role":"ROLE_USER"}`)
+	req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var resp dto.UserResponse
+	decodeJSON(t, w, &resp)
+	assert.Equal(t, "uuid-1", resp.ID)
+}
+
+func TestAuthHandler_Register_Conflict(t *testing.T) {
+	svc, r := setupAuthRouter(t)
+	svc.EXPECT().Register(mock.Anything, mock.Anything).
+		Return(dto.UserResponse{}, fmt.Errorf("%w: username or email already taken", service.ErrConflict))
+
+	body := bytes.NewBufferString(`{"username":"admin","email":"admin@lms.local","password":"secret123","role":"ROLE_USER"}`)
+	req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+	var resp dto.ErrorResponse
+	decodeJSON(t, w, &resp)
+	assert.Equal(t, "CONFLICT", resp.Error.Code)
+}
+
+func TestAuthHandler_Register_InvalidRole(t *testing.T) {
+	_, r := setupAuthRouter(t)
+
+	// role not in the allowed oneof set -> validation 400 before service call
+	body := bytes.NewBufferString(`{"username":"jdoe","email":"jdoe@lms.local","password":"secret123","role":"ROLE_SUPERHERO"}`)
+	req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp dto.ErrorResponse
+	decodeJSON(t, w, &resp)
+	assert.Equal(t, "INVALID_INPUT", resp.Error.Code)
+}

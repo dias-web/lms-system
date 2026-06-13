@@ -104,6 +104,69 @@
                 }
             }
         },
+        "/auth/register": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a Keycloak user and assigns a realm role. Requires a\nvalid token carrying ROLE_ADMIN.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Register a new user (admin only)",
+                "parameters": [
+                    {
+                        "description": "New user",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an admin",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Username or email already taken",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/chapters": {
             "post": {
                 "description": "Creates a chapter under an existing course. course_id is required and validated.",
@@ -870,6 +933,51 @@
                 }
             }
         },
+        "RegisterRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "role",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@lms.local"
+                },
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "John"
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Doe"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "Str0ngPass"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "ROLE_ADMIN",
+                        "ROLE_TEACHER",
+                        "ROLE_USER"
+                    ],
+                    "example": "ROLE_USER"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2,
+                    "example": "jdoe"
+                }
+            }
+        },
         "TokenResponse": {
             "type": "object",
             "properties": {
@@ -890,6 +998,35 @@
                 "token_type": {
                     "type": "string",
                     "example": "Bearer"
+                }
+            }
+        },
+        "UserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@lms.local"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "b1c2d3e4-...."
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "ROLE_USER"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
                 }
             }
         },
@@ -1177,22 +1314,12 @@
             }
         }
     },
-    "tags": [
-        {
-            "description": "Liveness probe.",
-            "name": "health"
-        },
-        {
-            "description": "Top-level course catalog.",
-            "name": "courses"
-        },
-        {
-            "description": "Chapters belong to a course.",
-            "name": "chapters"
-        },
-        {
-            "description": "Lessons belong to a chapter and carry the textual content.",
-            "name": "lessons"
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and a JWT access token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
-    ]
+    }
 }

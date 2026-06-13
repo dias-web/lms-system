@@ -104,3 +104,52 @@ func TestAuthService_Refresh_KeycloakDown(t *testing.T) {
 	assert.ErrorIs(t, err, boom)
 	assert.NotErrorIs(t, err, ErrUnauthorized)
 }
+
+func TestAuthService_Register_Success(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	req := dto.RegisterRequest{
+		Username: "jdoe", Email: "jdoe@lms.local", Password: "secret123",
+		FirstName: "John", LastName: "Doe", Role: "ROLE_TEACHER",
+	}
+	kc.EXPECT().
+		CreateUser(mock.Anything, keycloak.CreateUserInput{
+			Username: "jdoe", Email: "jdoe@lms.local", FirstName: "John",
+			LastName: "Doe", Password: "secret123", Role: "ROLE_TEACHER",
+		}).
+		Return("user-uuid-123", nil)
+
+	resp, err := svc.Register(context.Background(), req)
+	require.NoError(t, err)
+	assert.Equal(t, "user-uuid-123", resp.ID)
+	assert.Equal(t, "jdoe", resp.Username)
+	assert.Equal(t, "ROLE_TEACHER", resp.Role)
+}
+
+func TestAuthService_Register_Conflict(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	kc.EXPECT().CreateUser(mock.Anything, mock.Anything).
+		Return("", keycloak.ErrUserExists)
+
+	_, err := svc.Register(context.Background(), dto.RegisterRequest{
+		Username: "admin", Email: "admin@lms.local", Password: "x", Role: "ROLE_USER",
+	})
+	assert.ErrorIs(t, err, ErrConflict)
+}
+
+func TestAuthService_Register_KeycloakDown(t *testing.T) {
+	kc := svcmocks.NewMockKeycloakClient(t)
+	svc := NewAuthService(kc, silentLogger())
+
+	boom := errors.New("connection refused")
+	kc.EXPECT().CreateUser(mock.Anything, mock.Anything).Return("", boom)
+
+	_, err := svc.Register(context.Background(), dto.RegisterRequest{
+		Username: "jdoe", Email: "jdoe@lms.local", Password: "x", Role: "ROLE_USER",
+	})
+	assert.ErrorIs(t, err, boom)
+	assert.NotErrorIs(t, err, ErrConflict)
+}
