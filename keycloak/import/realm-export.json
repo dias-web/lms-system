@@ -1,0 +1,74 @@
+{
+  "realm": "lms",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 604800,
+  "ssoSessionMaxLifespan": 604800,
+  "revokeRefreshToken": false,
+  "roles": {
+    "realm": [
+      { "name": "ROLE_ADMIN", "description": "Full administrative access; can manage users and roles" },
+      { "name": "ROLE_TEACHER", "description": "Can manage course content" },
+      { "name": "ROLE_USER", "description": "Default authenticated user" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "lms-backend",
+      "name": "LMS Backend",
+      "description": "Confidential client used by the Go service for login and token refresh",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "lms-backend-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@lms.local",
+      "firstName": "Site",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "admin123", "temporary": false }
+      ],
+      "realmRoles": ["ROLE_ADMIN"]
+    },
+    {
+      "username": "teacher",
+      "email": "teacher@lms.local",
+      "firstName": "Demo",
+      "lastName": "Teacher",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "teacher123", "temporary": false }
+      ],
+      "realmRoles": ["ROLE_TEACHER"]
+    },
+    {
+      "username": "user",
+      "email": "user@lms.local",
+      "firstName": "Demo",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "user123", "temporary": false }
+      ],
+      "realmRoles": ["ROLE_USER"]
+    }
+  ]
+}
