@@ -20,7 +20,8 @@ type AppConfig struct {
 }
 
 type KeycloakConfig struct {
-	URL           string // base URL, e.g. http://localhost:8081
+	URL           string // internal base URL used for token/JWKS/admin calls (must be reachable)
+	IssuerURL     string // external base URL that appears in token "iss"; defaults to URL
 	Realm         string // realm name, e.g. lms
 	ClientID      string // confidential client used by the backend
 	ClientSecret  string // client secret for admin/token operations
@@ -28,14 +29,17 @@ type KeycloakConfig struct {
 	AdminPassword string
 }
 
-// Issuer is the expected "iss" claim and JWKS base for the realm.
+// Issuer is the expected "iss" claim for tokens of this realm. It is derived
+// from IssuerURL, which may differ from URL when Keycloak is reached on a
+// different address than the one baked into its tokens (e.g. inside Docker).
 func (k KeycloakConfig) Issuer() string {
-	return fmt.Sprintf("%s/realms/%s", k.URL, k.Realm)
+	return fmt.Sprintf("%s/realms/%s", k.IssuerURL, k.Realm)
 }
 
-// CertsURL is the JWKS endpoint serving the realm's public signing keys.
+// CertsURL is the JWKS endpoint serving the realm's public signing keys. It
+// uses the internal URL so the backend can always reach it.
 func (k KeycloakConfig) CertsURL() string {
-	return k.Issuer() + "/protocol/openid-connect/certs"
+	return fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", k.URL, k.Realm)
 }
 
 type PostgresConfig struct {
@@ -66,12 +70,19 @@ func Load() (*Config, error) {
 		},
 		Keycloak: KeycloakConfig{
 			URL:           getEnv("KEYCLOAK_URL", "http://localhost:8081"),
+			IssuerURL:     getEnv("KEYCLOAK_ISSUER_URL", ""),
 			Realm:         getEnv("KEYCLOAK_REALM", "lms"),
 			ClientID:      getEnv("KEYCLOAK_CLIENT_ID", "lms-backend"),
 			ClientSecret:  getEnv("KEYCLOAK_CLIENT_SECRET", ""),
 			AdminUser:     getEnv("KEYCLOAK_ADMIN_USERNAME", "admin"),
 			AdminPassword: getEnv("KEYCLOAK_ADMIN_PASSWORD", "admin"),
 		},
+	}
+
+	// When the issuer URL is not set explicitly, tokens are issued and
+	// validated on the same address (typical for host-run app).
+	if cfg.Keycloak.IssuerURL == "" {
+		cfg.Keycloak.IssuerURL = cfg.Keycloak.URL
 	}
 
 	return cfg, nil

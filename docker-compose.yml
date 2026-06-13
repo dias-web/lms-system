@@ -40,8 +40,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
       POSTGRES_DB: ${POSTGRES_DB:-lms_db}
       POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-disable}
-      # Inside the compose network Keycloak is reachable as http://keycloak:8080
+      # Inside the compose network Keycloak is reachable as http://keycloak:8080,
+      # but tokens are issued with the external URL below — validate against it.
       KEYCLOAK_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL:-http://localhost:8081}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-lms}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-lms-backend}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
@@ -92,6 +94,12 @@ services:
       # HTTP / health
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
+      # Pin the public URL so tokens always carry a stable issuer
+      # (http://localhost:8081/realms/lms). backchannel-dynamic lets the
+      # backend reach Keycloak on the internal address (keycloak:8080) while
+      # tokens keep the external issuer above.
+      KC_HOSTNAME: ${KEYCLOAK_ISSUER_URL:-http://localhost:8081}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     ports:
       - "${KC_PORT:-8081}:8080"
     volumes:

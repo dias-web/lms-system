@@ -2,7 +2,7 @@
 
 Это бэкенд для системы управления обучением (Learning Management System), который я делал в рамках стажировки в BITLAB ACADEMY.
 
-Сервис умеет хранить курсы, главы и уроки и отдавать их по REST API. Внутри — PostgreSQL, миграции через Goose, документация в Swagger.
+Сервис умеет хранить курсы, главы и уроки и отдавать их по REST API. Аутентификация и пользователи — через Keycloak (JWT + refresh-токены, роли). Внутри — PostgreSQL, миграции через Goose, документация в Swagger.
 
 ## Стек
 
@@ -10,6 +10,7 @@
 - Gin — HTTP-фреймворк
 - GORM — ORM поверх PostgreSQL
 - Goose — миграции
+- Keycloak — аутентификация, выдача JWT, управление пользователями и ролями
 - logrus — логирование
 - Testify + Mockery — юнит-тесты
 - swag — генерация Swagger-доки из аннотаций
@@ -31,7 +32,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Compose сам скачает образ `yamaha226/lms-system:latest` с Docker Hub, поднимет рядом PostgreSQL и накатит миграции.
+Compose поднимет четыре контейнера: само приложение, его PostgreSQL, Keycloak и отдельный PostgreSQL для Keycloak. Образ приложения тянется с Docker Hub, миграции накатываются автоматически, realm Keycloak импортируется при старте — авторизация работает из коробки.
 
 Проверить, что всё живо:
 
@@ -40,7 +41,10 @@ curl http://localhost:8080/health
 # {"status":"ok"}
 ```
 
-Открыть Swagger в браузере: <http://localhost:8080/swagger/index.html>
+- Swagger приложения: <http://localhost:8080/swagger/index.html>
+- Консоль Keycloak: <http://localhost:8081> (логин `admin` / `admin`)
+
+> Keycloak стартует ~20 секунд — первые запросы к `/auth/*` могут не пройти, пока он не поднимется.
 
 Чтобы остановить:
 
@@ -55,8 +59,8 @@ docker compose down
 Если хочешь поправить код и запускать локально:
 
 ```bash
-# Поднять только Postgres в Docker
-docker compose up -d postgres
+# Поднять Postgres и Keycloak в Docker (всё кроме самого приложения)
+docker compose up -d postgres keycloak keycloak-db
 
 # Накатить миграции
 make migrate-up
@@ -65,30 +69,44 @@ make migrate-up
 make run
 ```
 
-В `.env` поменяй `POSTGRES_HOST=postgres` на `POSTGRES_HOST=localhost`, иначе Go-приложение не найдёт базу.
+В `.env` поменяй `POSTGRES_HOST=postgres` на `POSTGRES_HOST=localhost`, иначе Go-приложение не найдёт базу. `KEYCLOAK_URL` при локальном запуске оставь `http://localhost:8081` (так issuer токенов совпадёт автоматически).
 
 ## API
 
-Все эндпоинты сгруппированы по сущностям: `courses`, `chapters`, `lessons`. Полное описание с примерами запросов и ответов — в Swagger.
+Полное описание с примерами запросов и ответов — в Swagger. Колонка «Доступ» показывает, что нужно для вызова: 🔓 — публично, 🔒 — валидный JWT, 👑 — JWT с ролью `ROLE_ADMIN`.
 
-| Метод | Путь | Что делает |
-|-------|------|------------|
-| GET | `/health` | Проверка живости |
-| GET | `/courses` | Список всех курсов |
-| POST | `/courses` | Создать курс |
-| GET | `/courses/:id` | Курс со всеми главами |
-| PUT | `/courses/:id` | Обновить курс |
-| DELETE | `/courses/:id` | Удалить курс |
-| GET | `/courses/:id/chapters` | Главы курса |
-| POST | `/chapters` | Создать главу |
-| GET | `/chapters/:id` | Главу с уроками |
-| PUT | `/chapters/:id` | Обновить главу |
-| DELETE | `/chapters/:id` | Удалить главу |
-| GET | `/chapters/:id/lessons` | Уроки главы |
-| POST | `/lessons` | Создать урок |
-| GET | `/lessons/:id` | Урок |
-| PUT | `/lessons/:id` | Обновить урок |
-| DELETE | `/lessons/:id` | Удалить урок |
+### Аутентификация (`/auth`)
+
+| Метод | Путь | Что делает | Доступ |
+|-------|------|------------|--------|
+| POST | `/auth/login` | Логин по username/password, выдаёт пару токенов | 🔓 |
+| POST | `/auth/refresh` | Обновить access-токен по refresh-токену | 🔓 |
+| POST | `/auth/register` | Создать пользователя и назначить роль | 👑 |
+| PUT | `/auth/profile` | Обновить свои email/имя (роль менять нельзя) | 🔒 |
+| PUT | `/auth/password` | Сменить свой пароль (с проверкой текущего) | 🔒 |
+
+### Курсы / главы / уроки
+
+| Метод | Путь | Что делает | Доступ |
+|-------|------|------------|--------|
+| GET | `/health` | Проверка живости | 🔓 |
+| GET | `/courses` | Список всех курсов | 🔓 |
+| POST | `/courses` | Создать курс | 🔒 |
+| GET | `/courses/:id` | Курс со всеми главами | 🔓 |
+| PUT | `/courses/:id` | Обновить курс | 🔒 |
+| DELETE | `/courses/:id` | Удалить курс | 🔒 |
+| GET | `/courses/:id/chapters` | Главы курса | 🔓 |
+| POST | `/chapters` | Создать главу | 🔒 |
+| GET | `/chapters/:id` | Главу с уроками | 🔓 |
+| PUT | `/chapters/:id` | Обновить главу | 🔒 |
+| DELETE | `/chapters/:id` | Удалить главу | 🔒 |
+| GET | `/chapters/:id/lessons` | Уроки главы | 🔓 |
+| POST | `/lessons` | Создать урок | 🔒 |
+| GET | `/lessons/:id` | Урок | 🔓 |
+| PUT | `/lessons/:id` | Обновить урок | 🔒 |
+| DELETE | `/lessons/:id` | Удалить урок | 🔒 |
+
+Чтение (GET) публично, любые изменения (POST/PUT/DELETE) требуют токена.
 
 ### Формат ошибок
 
@@ -103,7 +121,50 @@ make run
 }
 ```
 
-Коды: `INVALID_INPUT` (400), `COURSE_NOT_FOUND` / `CHAPTER_NOT_FOUND` / `LESSON_NOT_FOUND` (404), `INTERNAL_ERROR` (500).
+| Код | HTTP | Когда |
+|-----|------|-------|
+| `INVALID_INPUT` | 400 | Не прошла валидация тела/параметров |
+| `UNAUTHORIZED` | 401 | Нет токена, токен невалиден или неверный текущий пароль |
+| `FORBIDDEN` | 403 | Не хватает роли (например, не админ) |
+| `COURSE_NOT_FOUND` / `CHAPTER_NOT_FOUND` / `LESSON_NOT_FOUND` | 404 | Сущность не найдена |
+| `CONFLICT` | 409 | Пользователь с таким username/email уже есть |
+| `INTERNAL_ERROR` | 500 | Внутренняя ошибка |
+
+## Аутентификация
+
+Пользователи, пароли и роли живут в Keycloak. Приложение проверяет JWT по публичным ключам Keycloak (JWKS) и достаёт роли из токена.
+
+**Тестовые пользователи** (заводятся при импорте realm):
+
+| Логин | Пароль | Роль |
+|-------|--------|------|
+| `admin` | `admin123` | `ROLE_ADMIN` |
+| `teacher` | `teacher123` | `ROLE_TEACHER` |
+| `user` | `user123` | `ROLE_USER` |
+
+Access-токен живёт 5 минут, refresh-токен — 168 часов (7 дней).
+
+**Получить токен и дёрнуть защищённый эндпоинт:**
+
+```bash
+# 1. Логинимся, забираем access_token
+TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+
+# 2. Создаём курс с этим токеном
+curl -X POST http://localhost:8080/courses \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Go for beginners","description":"intro"}'
+```
+
+**Роли:**
+- `ROLE_ADMIN` — может всё, включая регистрацию пользователей и назначение ролей.
+- `ROLE_TEACHER` / `ROLE_USER` — обычные пользователи; могут менять свой профиль и пароль, но не роли.
+
+Сменить свою роль через API нельзя в принципе — поля роли нет в запросах профиля. Назначить роль может только админ при регистрации.
 
 ## Конфигурация
 
@@ -120,8 +181,25 @@ make run
 | `POSTGRES_PASSWORD` | Пароль | `lms_password` |
 | `POSTGRES_DB` | Имя базы | `lms_db` |
 | `POSTGRES_SSLMODE` | SSL для подключения | `disable` |
+| `KEYCLOAK_URL` | Адрес, по которому приложение **ходит** в Keycloak (должен быть доступен) | `http://localhost:8081` |
+| `KEYCLOAK_ISSUER_URL` | URL, зашитый в `iss` токена (для проверки подписи). Пусто = берётся `KEYCLOAK_URL` | (пусто) |
+| `KEYCLOAK_REALM` | Realm | `lms` |
+| `KEYCLOAK_CLIENT_ID` | Клиент бэкенда | `lms-backend` |
+| `KEYCLOAK_CLIENT_SECRET` | Секрет клиента | `lms-backend-secret` |
+| `KEYCLOAK_ADMIN_USERNAME` | Админ Keycloak для управления юзерами | `admin` |
+| `KEYCLOAK_ADMIN_PASSWORD` | Пароль админа Keycloak | `admin` |
 
 В `development` логи идут текстом в консоль, в `production` — JSON-ом (удобно собирать в любую систему агрегации).
+
+### Почему два URL для Keycloak
+
+Токен всегда содержит `iss` — адрес, по которому Keycloak «представляется» (issuer). Приложение обязано проверять, что `iss` токена совпадает с ожидаемым. Проблема в том, что *снаружи* (с хоста, из браузера) Keycloak доступен как `localhost:8081`, а *изнутри* Docker-сети приложение ходит к нему как `keycloak:8080` — это разные адреса.
+
+Решение:
+- У Keycloak зафиксирован `KC_HOSTNAME=http://localhost:8081` + `hostname-backchannel-dynamic` — issuer в токенах всегда стабильный (`localhost:8081`), но backend может обращаться к нему по внутреннему адресу.
+- В приложении `KEYCLOAK_URL` (куда ходить за JWKS/токенами) и `KEYCLOAK_ISSUER_URL` (что проверять в `iss`) разделены. Compose выставляет их автоматически: `keycloak:8080` для запросов и `localhost:8081` для issuer.
+
+При локальном запуске (`make run`) оба адреса совпадают (`localhost:8081`), `KEYCLOAK_ISSUER_URL` можно не задавать.
 
 ## Структура проекта
 
@@ -131,12 +209,15 @@ internal/
   config/                чтение .env
   entity/                модели БД (GORM)
   repository/            доступ к данным
-  service/               бизнес-логика
+  service/               бизнес-логика (включая auth_service)
   dto/                   запросы/ответы API
   handler/               HTTP-обработчики (Gin)
-  middleware/            recovery, error handler, request logger
+  middleware/            recovery, error handler, request logger, JWT-аутентификация
+  auth/                  валидация JWT по JWKS, разбор ролей
+  keycloak/              клиент Keycloak (логин, refresh, управление юзерами)
 pkg/logger/              обёртка над logrus
 migrations/              SQL-миграции (Goose)
+keycloak/import/         realm-export.json — роли и тестовые юзеры
 docs/                    сгенерированный Swagger
 ```
 
@@ -166,10 +247,10 @@ make test
 ```
 
 Покрытие:
-- `internal/service` — ~78%
-- `internal/handler` — ~76%
+- `internal/service` — ~81%
+- `internal/handler` — ~80%
 
-Тесты гоняются с флагом `-race`, чтобы ловить race conditions.
+Тесты гоняются с флагом `-race`, чтобы ловить race conditions. Keycloak в тестах не нужен — клиент Keycloak спрятан за интерфейсом и мокается через Mockery.
 
 Если поправил интерфейс репозитория или сервиса — перегенерь моки:
 
@@ -208,3 +289,10 @@ make migrate-up        # накатить миграции
 5. Логирование на logrus с уровнями DEBUG / INFO / WARN / ERROR
 6. Swagger-документация всех эндпоинтов
 7. Юнит-тесты сервисов и хендлеров через Testify + Mockery
+8. Keycloak + отдельный PostgreSQL для него в Docker Compose
+9. Интеграция с Keycloak: валидация JWT в middleware, защита мутаций, роли из токена
+10. Импорт realm с ролями `ROLE_ADMIN` / `ROLE_TEACHER` / `ROLE_USER` и тестовыми юзерами
+11. Эндпоинт логина: выдача access (5 мин) и refresh (168 ч) токенов
+12. Эндпоинт обновления access-токена по refresh-токену
+13. Регистрация пользователей (только `ROLE_ADMIN`) с назначением роли
+14. Обновление профиля и смена пароля (без возможности менять свои роли)
