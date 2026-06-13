@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dias-web/lms-system/internal/auth"
 	"github.com/dias-web/lms-system/internal/config"
 	"github.com/dias-web/lms-system/internal/handler"
 	"github.com/dias-web/lms-system/internal/middleware"
@@ -104,9 +105,16 @@ func main() {
 
 	router.GET("/health", handler.Health)
 
-	handler.NewCourseHandler(courseSvc).Register(router)
-	handler.NewChapterHandler(chapterSvc).Register(router)
-	handler.NewLessonHandler(lessonSvc).Register(router)
+	// JWKS-backed validator; loads keys lazily on the first authenticated
+	// request so the app can start before the Keycloak realm exists.
+	validator := auth.NewValidator(cfg.Keycloak.CertsURL(), cfg.Keycloak.Issuer())
+	authRequired := middleware.AuthRequired(validator, log)
+	log.Infof("Auth enabled: validating JWTs issued by %s", cfg.Keycloak.Issuer())
+
+	// Mutations require a valid token; reads stay public.
+	handler.NewCourseHandler(courseSvc).Register(router, authRequired)
+	handler.NewChapterHandler(chapterSvc).Register(router, authRequired)
+	handler.NewLessonHandler(lessonSvc).Register(router, authRequired)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

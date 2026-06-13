@@ -10,12 +10,30 @@ import (
 type Config struct {
 	App      AppConfig
 	Postgres PostgresConfig
+	Keycloak KeycloakConfig
 }
 
 type AppConfig struct {
 	Port     string
 	Env      string
 	LogLevel string
+}
+
+type KeycloakConfig struct {
+	URL          string // base URL, e.g. http://localhost:8081
+	Realm        string // realm name, e.g. lms
+	ClientID     string // confidential client used by the backend
+	ClientSecret string // client secret for admin/token operations
+}
+
+// Issuer is the expected "iss" claim and JWKS base for the realm.
+func (k KeycloakConfig) Issuer() string {
+	return fmt.Sprintf("%s/realms/%s", k.URL, k.Realm)
+}
+
+// CertsURL is the JWKS endpoint serving the realm's public signing keys.
+func (k KeycloakConfig) CertsURL() string {
+	return k.Issuer() + "/protocol/openid-connect/certs"
 }
 
 type PostgresConfig struct {
@@ -43,6 +61,12 @@ func Load() (*Config, error) {
 			Password: getEnv("POSTGRES_PASSWORD", "lms_password"),
 			DBName:   getEnv("POSTGRES_DB", "lms_db"),
 			SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+		},
+		Keycloak: KeycloakConfig{
+			URL:          getEnv("KEYCLOAK_URL", "http://localhost:8081"),
+			Realm:        getEnv("KEYCLOAK_REALM", "lms"),
+			ClientID:     getEnv("KEYCLOAK_CLIENT_ID", "lms-backend"),
+			ClientSecret: getEnv("KEYCLOAK_CLIENT_SECRET", ""),
 		},
 	}
 

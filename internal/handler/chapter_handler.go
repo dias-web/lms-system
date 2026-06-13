@@ -16,13 +16,15 @@ func NewChapterHandler(svc service.ChapterService) *ChapterHandler {
 	return &ChapterHandler{svc: svc}
 }
 
-// Register wires all chapter routes onto the given router group.
-func (h *ChapterHandler) Register(r *gin.Engine) {
+// Register wires all chapter routes onto the given router group. Any handlers
+// passed as authMW guard the mutating endpoints (POST/PUT/DELETE); reads stay
+// public.
+func (h *ChapterHandler) Register(r *gin.Engine, authMW ...gin.HandlerFunc) {
 	r.GET("/courses/:id/chapters", h.ListByCourse)
 	r.GET("/chapters/:id", h.GetByID)
-	r.POST("/chapters", h.Create)
-	r.PUT("/chapters/:id", h.Update)
-	r.DELETE("/chapters/:id", h.Delete)
+	r.POST("/chapters", chain(authMW, h.Create)...)
+	r.PUT("/chapters/:id", chain(authMW, h.Update)...)
+	r.DELETE("/chapters/:id", chain(authMW, h.Delete)...)
 }
 
 // ListByCourse godoc

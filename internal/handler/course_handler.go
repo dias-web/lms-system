@@ -16,13 +16,15 @@ func NewCourseHandler(svc service.CourseService) *CourseHandler {
 	return &CourseHandler{svc: svc}
 }
 
-// Register wires all course routes onto the given router group.
-func (h *CourseHandler) Register(r *gin.Engine) {
+// Register wires all course routes onto the given router group. Any handlers
+// passed as authMW guard the mutating endpoints (POST/PUT/DELETE); reads stay
+// public.
+func (h *CourseHandler) Register(r *gin.Engine, authMW ...gin.HandlerFunc) {
 	r.GET("/courses", h.List)
 	r.GET("/courses/:id", h.GetByID)
-	r.POST("/courses", h.Create)
-	r.PUT("/courses/:id", h.Update)
-	r.DELETE("/courses/:id", h.Delete)
+	r.POST("/courses", chain(authMW, h.Create)...)
+	r.PUT("/courses/:id", chain(authMW, h.Update)...)
+	r.DELETE("/courses/:id", chain(authMW, h.Delete)...)
 }
 
 // List godoc

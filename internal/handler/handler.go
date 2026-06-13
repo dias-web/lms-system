@@ -4,7 +4,17 @@ import (
 	"fmt"
 
 	"github.com/dias-web/lms-system/internal/service"
+	"github.com/gin-gonic/gin"
 )
+
+// chain prepends route-level middleware (e.g. auth) to a final handler,
+// returning the slice gin expects. A fresh slice is allocated each call so
+// repeated use across routes cannot alias a shared backing array.
+func chain(mw []gin.HandlerFunc, final gin.HandlerFunc) []gin.HandlerFunc {
+	out := make([]gin.HandlerFunc, 0, len(mw)+1)
+	out = append(out, mw...)
+	return append(out, final)
+}
 
 // parseUintParam parses a positive integer path parameter.
 func parseUintParam(s string, dst *uint) error {

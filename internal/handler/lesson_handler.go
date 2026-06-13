@@ -16,13 +16,15 @@ func NewLessonHandler(svc service.LessonService) *LessonHandler {
 	return &LessonHandler{svc: svc}
 }
 
-// Register wires all lesson routes onto the given router group.
-func (h *LessonHandler) Register(r *gin.Engine) {
+// Register wires all lesson routes onto the given router group. Any handlers
+// passed as authMW guard the mutating endpoints (POST/PUT/DELETE); reads stay
+// public.
+func (h *LessonHandler) Register(r *gin.Engine, authMW ...gin.HandlerFunc) {
 	r.GET("/chapters/:id/lessons", h.ListByChapter)
 	r.GET("/lessons/:id", h.GetByID)
-	r.POST("/lessons", h.Create)
-	r.PUT("/lessons/:id", h.Update)
-	r.DELETE("/lessons/:id", h.Delete)
+	r.POST("/lessons", chain(authMW, h.Create)...)
+	r.PUT("/lessons/:id", chain(authMW, h.Update)...)
+	r.DELETE("/lessons/:id", chain(authMW, h.Delete)...)
 }
 
 // ListByChapter godoc

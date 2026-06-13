@@ -37,6 +37,10 @@ func ErrorHandler(log *logrus.Logger) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, dto.NewErrorResponse("NOT_FOUND", err.Error()))
 		case errors.Is(err, service.ErrInvalidInput):
 			c.JSON(http.StatusBadRequest, dto.NewErrorResponse("INVALID_INPUT", err.Error()))
+		case errors.Is(err, service.ErrUnauthorized):
+			c.JSON(http.StatusUnauthorized, dto.NewErrorResponse("UNAUTHORIZED", err.Error()))
+		case errors.Is(err, service.ErrForbidden):
+			c.JSON(http.StatusForbidden, dto.NewErrorResponse("FORBIDDEN", err.Error()))
 		default:
 			log.WithError(err).
 				WithField("path", c.Request.URL.Path).

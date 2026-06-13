@@ -40,6 +40,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms_password}
       POSTGRES_DB: ${POSTGRES_DB:-lms_db}
       POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-disable}
+      # Inside the compose network Keycloak is reachable as http://keycloak:8080
+      KEYCLOAK_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-lms}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-lms-backend}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
     ports:
       - "${APP_PORT:-8080}:8080"
     networks:
