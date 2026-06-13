@@ -12,6 +12,14 @@ definitions:
     - password
     - username
     type: object
+  RefreshRequest:
+    properties:
+      refresh_token:
+        example: eyJhbGciOi...
+        type: string
+    required:
+    - refresh_token
+    type: object
   TokenResponse:
     properties:
       access_token:
@@ -273,6 +281,38 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: Authenticate and obtain tokens
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Exchanges a valid refresh token for a new access/refresh token
+        pair. Used when the 5-minute access token expires.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/TokenResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Refresh access token
       tags:
       - auth
   /chapters:

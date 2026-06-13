@@ -19,6 +19,7 @@ type KeycloakClient interface {
 
 type AuthService interface {
 	Login(ctx context.Context, req dto.LoginRequest) (dto.TokenResponse, error)
+	Refresh(ctx context.Context, req dto.RefreshRequest) (dto.TokenResponse, error)
 }
 
 type authService struct {
@@ -44,6 +45,23 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Toke
 	}
 
 	s.log.WithField("username", req.Username).Info("User logged in")
+	return toTokenResponse(token), nil
+}
+
+func (s *authService) Refresh(ctx context.Context, req dto.RefreshRequest) (dto.TokenResponse, error) {
+	s.log.Info("Refreshing access token")
+
+	token, err := s.kc.Refresh(ctx, req.RefreshToken)
+	if err != nil {
+		if errors.Is(err, keycloak.ErrInvalidCredentials) {
+			s.log.Warn("refresh failed: invalid or expired refresh token")
+			return dto.TokenResponse{}, fmt.Errorf("%w: invalid or expired refresh token", ErrUnauthorized)
+		}
+		s.log.WithError(err).Error("refresh failed: keycloak error")
+		return dto.TokenResponse{}, err
+	}
+
+	s.log.Info("Access token refreshed")
 	return toTokenResponse(token), nil
 }
 

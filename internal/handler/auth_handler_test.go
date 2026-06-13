@@ -78,3 +78,56 @@ func TestAuthHandler_Login_ValidationError(t *testing.T) {
 	decodeJSON(t, w, &resp)
 	assert.Equal(t, "INVALID_INPUT", resp.Error.Code)
 }
+
+func TestAuthHandler_Refresh_OK(t *testing.T) {
+	svc, r := setupAuthRouter(t)
+	svc.EXPECT().
+		Refresh(mock.Anything, dto.RefreshRequest{RefreshToken: "r.jwt"}).
+		Return(dto.TokenResponse{
+			AccessToken: "new.access", RefreshToken: "new.refresh",
+			ExpiresIn: 300, RefreshExpiresIn: 604800, TokenType: "Bearer",
+		}, nil)
+
+	body := bytes.NewBufferString(`{"refresh_token":"r.jwt"}`)
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp dto.TokenResponse
+	decodeJSON(t, w, &resp)
+	assert.Equal(t, "new.access", resp.AccessToken)
+}
+
+func TestAuthHandler_Refresh_Expired(t *testing.T) {
+	svc, r := setupAuthRouter(t)
+	svc.EXPECT().Refresh(mock.Anything, mock.Anything).
+		Return(dto.TokenResponse{}, fmt.Errorf("%w: invalid or expired refresh token", service.ErrUnauthorized))
+
+	body := bytes.NewBufferString(`{"refresh_token":"expired"}`)
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	var resp dto.ErrorResponse
+	decodeJSON(t, w, &resp)
+	assert.Equal(t, "UNAUTHORIZED", resp.Error.Code)
+}
+
+func TestAuthHandler_Refresh_ValidationError(t *testing.T) {
+	_, r := setupAuthRouter(t)
+
+	body := bytes.NewBufferString(`{}`) // missing refresh_token
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}

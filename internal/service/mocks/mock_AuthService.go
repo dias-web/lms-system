@@ -79,6 +79,63 @@ func (_c *MockAuthService_Login_Call) RunAndReturn(run func(context.Context, dto
 	return _c
 }
 
+// Refresh provides a mock function with given fields: ctx, req
+func (_m *MockAuthService) Refresh(ctx context.Context, req dto.RefreshRequest) (dto.TokenResponse, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Refresh")
+	}
+
+	var r0 dto.TokenResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dto.RefreshRequest) (dto.TokenResponse, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dto.RefreshRequest) dto.TokenResponse); ok {
+		r0 = rf(ctx, req)
+	} else {
+		r0 = ret.Get(0).(dto.TokenResponse)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, dto.RefreshRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAuthService_Refresh_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Refresh'
+type MockAuthService_Refresh_Call struct {
+	*mock.Call
+}
+
+// Refresh is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req dto.RefreshRequest
+func (_e *MockAuthService_Expecter) Refresh(ctx interface{}, req interface{}) *MockAuthService_Refresh_Call {
+	return &MockAuthService_Refresh_Call{Call: _e.mock.On("Refresh", ctx, req)}
+}
+
+func (_c *MockAuthService_Refresh_Call) Run(run func(ctx context.Context, req dto.RefreshRequest)) *MockAuthService_Refresh_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(dto.RefreshRequest))
+	})
+	return _c
+}
+
+func (_c *MockAuthService_Refresh_Call) Return(_a0 dto.TokenResponse, _a1 error) *MockAuthService_Refresh_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAuthService_Refresh_Call) RunAndReturn(run func(context.Context, dto.RefreshRequest) (dto.TokenResponse, error)) *MockAuthService_Refresh_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockAuthService creates a new instance of MockAuthService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockAuthService(t interface {

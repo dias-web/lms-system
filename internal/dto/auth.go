@@ -6,6 +6,11 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required" example:"admin123"`
 } // @name LoginRequest
 
+// RefreshRequest is the body for POST /auth/refresh.
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOi..."`
+} // @name RefreshRequest
+
 // TokenResponse is the token pair returned by login and refresh endpoints.
 // It mirrors the relevant fields of a Keycloak token response.
 type TokenResponse struct {
