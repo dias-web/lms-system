@@ -17,3 +17,5 @@ packages:
       CourseService:
       ChapterService:
       LessonService:
+      AuthService:
+      KeycloakClient:

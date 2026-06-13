@@ -31,6 +31,7 @@ import (
 	"github.com/dias-web/lms-system/internal/auth"
 	"github.com/dias-web/lms-system/internal/config"
 	"github.com/dias-web/lms-system/internal/handler"
+	"github.com/dias-web/lms-system/internal/keycloak"
 	"github.com/dias-web/lms-system/internal/middleware"
 	"github.com/dias-web/lms-system/internal/repository"
 	"github.com/dias-web/lms-system/internal/service"
@@ -110,6 +111,11 @@ func main() {
 	validator := auth.NewValidator(cfg.Keycloak.CertsURL(), cfg.Keycloak.Issuer())
 	authRequired := middleware.AuthRequired(validator, log)
 	log.Infof("Auth enabled: validating JWTs issued by %s", cfg.Keycloak.Issuer())
+
+	// Keycloak-backed authentication endpoints (login/refresh).
+	kcClient := keycloak.NewClient(cfg.Keycloak)
+	authSvc := service.NewAuthService(kcClient, log)
+	handler.NewAuthHandler(authSvc).Register(router)
 
 	// Mutations require a valid token; reads stay public.
 	handler.NewCourseHandler(courseSvc).Register(router, authRequired)
