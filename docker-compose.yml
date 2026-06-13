@@ -20,7 +20,7 @@ services:
       - lms-network
 
   app:
-    image: yamaha226/lms-system:${APP_VERSION:-latest}
+    image: yamaha226/lms-system:${APP_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: Dockerfile
