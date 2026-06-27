@@ -2,7 +2,7 @@
 
 Это бэкенд для системы управления обучением (Learning Management System), который я делал в рамках стажировки в BITLAB ACADEMY.
 
-Сервис умеет хранить курсы, главы и уроки и отдавать их по REST API. Аутентификация и пользователи — через Keycloak (JWT + refresh-токены, роли). Внутри — PostgreSQL, миграции через Goose, документация в Swagger.
+Сервис умеет хранить курсы, главы и уроки и отдавать их по REST API. Управлять каталогом (создавать/менять/удалять) может только администратор. К урокам можно прикладывать файлы — они лежат в MinIO (S3). Аутентификация и пользователи — через Keycloak (JWT + refresh-токены, роли). Внутри — PostgreSQL, миграции через Goose, документация в Swagger.
 
 ## Стек
 
@@ -11,6 +11,7 @@
 - GORM — ORM поверх PostgreSQL
 - Goose — миграции
 - Keycloak — аутентификация, выдача JWT, управление пользователями и ролями
+- MinIO — S3-совместимое хранилище для файлов-вложений
 - logrus — логирование
 - Testify + Mockery — юнит-тесты
 - swag — генерация Swagger-доки из аннотаций
@@ -32,7 +33,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Compose поднимет четыре контейнера: само приложение, его PostgreSQL, Keycloak и отдельный PostgreSQL для Keycloak. Образ приложения тянется с Docker Hub, миграции накатываются автоматически, realm Keycloak импортируется при старте — авторизация работает из коробки.
+Compose поднимет приложение, его PostgreSQL, Keycloak с отдельным PostgreSQL, MinIO и одноразовый контейнер, который создаёт bucket для файлов. Образ приложения тянется с Docker Hub, миграции накатываются автоматически, realm Keycloak импортируется при старте, bucket в MinIO создаётся сам — авторизация и загрузка файлов работают из коробки.
 
 Проверить, что всё живо:
 
@@ -43,6 +44,7 @@ curl http://localhost:8080/health
 
 - Swagger приложения: <http://localhost:8080/swagger/index.html>
 - Консоль Keycloak: <http://localhost:8081> (логин `admin` / `admin`)
+- Консоль MinIO: <http://localhost:9001> (логин `minioadmin` / `minioadmin`)
 
 > Keycloak стартует ~20 секунд — первые запросы к `/auth/*` могут не пройти, пока он не поднимется.
 
@@ -59,8 +61,8 @@ docker compose down
 Если хочешь поправить код и запускать локально:
 
 ```bash
-# Поднять Postgres и Keycloak в Docker (всё кроме самого приложения)
-docker compose up -d postgres keycloak keycloak-db
+# Поднять зависимости в Docker (всё кроме самого приложения)
+docker compose up -d postgres keycloak keycloak-db minio minio-init
 
 # Накатить миграции
 make migrate-up
@@ -69,7 +71,7 @@ make migrate-up
 make run
 ```
 
-В `.env` поменяй `POSTGRES_HOST=postgres` на `POSTGRES_HOST=localhost`, иначе Go-приложение не найдёт базу. `KEYCLOAK_URL` при локальном запуске оставь `http://localhost:8081` (так issuer токенов совпадёт автоматически).
+В `.env` поменяй `POSTGRES_HOST=postgres` на `POSTGRES_HOST=localhost`, иначе Go-приложение не найдёт базу. `KEYCLOAK_URL` при локальном запуске оставь `http://localhost:8081` (так issuer токенов совпадёт автоматически), а `MINIO_ENDPOINT` — `localhost:9000`.
 
 ## API
 
@@ -91,22 +93,32 @@ make run
 |-------|------|------------|--------|
 | GET | `/health` | Проверка живости | 🔓 |
 | GET | `/courses` | Список всех курсов | 🔓 |
-| POST | `/courses` | Создать курс | 🔒 |
+| POST | `/courses` | Создать курс | 👑 |
 | GET | `/courses/:id` | Курс со всеми главами | 🔓 |
-| PUT | `/courses/:id` | Обновить курс | 🔒 |
-| DELETE | `/courses/:id` | Удалить курс | 🔒 |
+| PUT | `/courses/:id` | Обновить курс | 👑 |
+| DELETE | `/courses/:id` | Удалить курс | 👑 |
 | GET | `/courses/:id/chapters` | Главы курса | 🔓 |
-| POST | `/chapters` | Создать главу | 🔒 |
+| POST | `/chapters` | Создать главу | 👑 |
 | GET | `/chapters/:id` | Главу с уроками | 🔓 |
-| PUT | `/chapters/:id` | Обновить главу | 🔒 |
-| DELETE | `/chapters/:id` | Удалить главу | 🔒 |
+| PUT | `/chapters/:id` | Обновить главу | 👑 |
+| DELETE | `/chapters/:id` | Удалить главу | 👑 |
 | GET | `/chapters/:id/lessons` | Уроки главы | 🔓 |
-| POST | `/lessons` | Создать урок | 🔒 |
+| POST | `/lessons` | Создать урок | 👑 |
 | GET | `/lessons/:id` | Урок | 🔓 |
-| PUT | `/lessons/:id` | Обновить урок | 🔒 |
-| DELETE | `/lessons/:id` | Удалить урок | 🔒 |
+| PUT | `/lessons/:id` | Обновить урок | 👑 |
+| DELETE | `/lessons/:id` | Удалить урок | 👑 |
 
-Чтение (GET) публично, любые изменения (POST/PUT/DELETE) требуют токена.
+Чтение (GET) публично, любые изменения каталога (POST/PUT/DELETE) — только для `ROLE_ADMIN`.
+
+### Файлы-вложения
+
+| Метод | Путь | Что делает | Доступ |
+|-------|------|------------|--------|
+| POST | `/upload` | Загрузить файл к уроку (`multipart/form-data`: поля `lesson_id` и `file`) | 👑 |
+| GET | `/download/:id` | Скачать файл по id вложения | 🔒 |
+| GET | `/lessons/:id/attachments` | Список вложений урока (метаданные) | 🔓 |
+
+Сами файлы лежат в MinIO под ключом `lessons/<lesson_id>/<uuid>.<ext>`, а метаданные (имя, размер, content-type, ключ объекта) — в таблице `attachments`. Загружать может только админ, скачивать — любой залогиненный пользователь.
 
 ### Формат ошибок
 
@@ -160,6 +172,21 @@ curl -X POST http://localhost:8080/courses \
   -d '{"name":"Go for beginners","description":"intro"}'
 ```
 
+**Загрузить и скачать файл к уроку:**
+
+```bash
+# Загрузка (только админ): multipart-форма с lesson_id и file
+curl -X POST http://localhost:8080/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F lesson_id=1 \
+  -F file=@./syllabus.pdf
+# {"id":1,"lesson_id":1,"file_name":"syllabus.pdf",...}
+
+# Скачивание (любой залогиненный): по id вложения
+curl http://localhost:8080/download/1 \
+  -H "Authorization: Bearer $TOKEN" -O -J
+```
+
 **Роли:**
 - `ROLE_ADMIN` — может всё, включая регистрацию пользователей и назначение ролей.
 - `ROLE_TEACHER` / `ROLE_USER` — обычные пользователи; могут менять свой профиль и пароль, но не роли.
@@ -188,6 +215,11 @@ curl -X POST http://localhost:8080/courses \
 | `KEYCLOAK_CLIENT_SECRET` | Секрет клиента | `lms-backend-secret` |
 | `KEYCLOAK_ADMIN_USERNAME` | Админ Keycloak для управления юзерами | `admin` |
 | `KEYCLOAK_ADMIN_PASSWORD` | Пароль админа Keycloak | `admin` |
+| `MINIO_ENDPOINT` | Адрес S3 API, по которому приложение **ходит** в MinIO (`host:port`, без схемы) | `localhost:9000` |
+| `MINIO_ACCESS_KEY` | Access key (он же логин MinIO) | `minioadmin` |
+| `MINIO_SECRET_KEY` | Secret key (он же пароль MinIO) | `minioadmin` |
+| `MINIO_BUCKET` | Bucket для вложений (создаётся автоматически) | `lms-attachments` |
+| `MINIO_USE_SSL` | Ходить в MinIO по HTTPS | `false` |
 
 В `development` логи идут текстом в консоль, в `production` — JSON-ом (удобно собирать в любую систему агрегации).
 
@@ -215,6 +247,7 @@ internal/
   middleware/            recovery, error handler, request logger, JWT-аутентификация
   auth/                  валидация JWT по JWKS, разбор ролей
   keycloak/              клиент Keycloak (логин, refresh, управление юзерами)
+  storage/               клиент MinIO (S3): загрузка/скачивание файлов
 pkg/logger/              обёртка над logrus
 migrations/              SQL-миграции (Goose)
 keycloak/import/         realm-export.json — роли и тестовые юзеры
@@ -247,10 +280,10 @@ make test
 ```
 
 Покрытие:
-- `internal/service` — ~81%
-- `internal/handler` — ~80%
+- `internal/service` — ~80%
+- `internal/handler` — ~82%
 
-Тесты гоняются с флагом `-race`, чтобы ловить race conditions. Keycloak в тестах не нужен — клиент Keycloak спрятан за интерфейсом и мокается через Mockery.
+Тесты гоняются с флагом `-race`, чтобы ловить race conditions. Keycloak и MinIO в тестах не нужны — клиент Keycloak и хранилище спрятаны за интерфейсами и мокаются через Mockery.
 
 Если поправил интерфейс репозитория или сервиса — перегенерь моки:
 
@@ -278,7 +311,7 @@ make migrate-up        # накатить миграции
 
 Теги:
 - `latest` — последняя сборка
-- `0.1.0` — фиксированная версия
+- `0.2.0` — фиксированная версия
 
 ## Что внутри (по этапам стажировки)
 
@@ -296,3 +329,8 @@ make migrate-up        # накатить миграции
 12. Эндпоинт обновления access-токена по refresh-токену
 13. Регистрация пользователей (только `ROLE_ADMIN`) с назначением роли
 14. Обновление профиля и смена пароля (без возможности менять свои роли)
+15. CRUD курсов — мутации только для `ROLE_ADMIN`
+16. CRUD глав — мутации только для `ROLE_ADMIN`
+17. CRUD уроков — мутации только для `ROLE_ADMIN`
+18. Интеграция MinIO (S3) через Docker Compose с авто-созданием bucket
+19. Эндпоинты `/upload` и `/download` + сущность `Attachment` (файлы к урокам)

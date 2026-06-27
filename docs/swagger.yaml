@@ -119,6 +119,28 @@ definitions:
         example: jdoe
         type: string
     type: object
+  dto.AttachmentResponse:
+    properties:
+      content_type:
+        example: application/pdf
+        type: string
+      created_at:
+        type: string
+      file_name:
+        example: syllabus.pdf
+        type: string
+      id:
+        example: 1
+        type: integer
+      lesson_id:
+        example: 1
+        type: integer
+      size:
+        example: 20480
+        type: integer
+      updated_at:
+        type: string
+    type: object
   dto.ChapterResponse:
     properties:
       course_id:
@@ -515,7 +537,7 @@ paths:
       consumes:
       - application/json
       description: Creates a chapter under an existing course. course_id is required
-        and validated.
+        and validated. Requires ROLE_ADMIN.
       parameters:
       - description: Chapter payload
         in: body
@@ -534,6 +556,14 @@ paths:
           description: Validation failed
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Parent course not found
           schema:
@@ -542,12 +572,14 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Create a new chapter
+      security:
+      - BearerAuth: []
+      summary: Create a new chapter (admin only)
       tags:
       - chapters
   /chapters/{id}:
     delete:
-      description: Deletes a chapter. All lessons are cascade-deleted.
+      description: Deletes a chapter. All lessons are cascade-deleted. Requires ROLE_ADMIN.
       parameters:
       - description: Chapter ID
         in: path
@@ -563,6 +595,14 @@ paths:
           description: Invalid id
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Chapter not found
           schema:
@@ -571,7 +611,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Delete a chapter
+      security:
+      - BearerAuth: []
+      summary: Delete a chapter (admin only)
       tags:
       - chapters
     get:
@@ -608,7 +650,7 @@ paths:
       consumes:
       - application/json
       description: Updates chapter name, description and order. course_id cannot be
-        changed via PUT.
+        changed via PUT. Requires ROLE_ADMIN.
       parameters:
       - description: Chapter ID
         in: path
@@ -632,6 +674,14 @@ paths:
           description: Validation failed or invalid id
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Chapter not found
           schema:
@@ -640,7 +690,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Update an existing chapter
+      security:
+      - BearerAuth: []
+      summary: Update an existing chapter (admin only)
       tags:
       - chapters
   /chapters/{id}/lessons:
@@ -699,6 +751,7 @@ paths:
       consumes:
       - application/json
       description: Creates a course. Name length 2..255. Description up to 10000 chars.
+        Requires ROLE_ADMIN.
       parameters:
       - description: Course payload
         in: body
@@ -717,16 +770,27 @@ paths:
           description: Validation failed
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Create a new course
+      security:
+      - BearerAuth: []
+      summary: Create a new course (admin only)
       tags:
       - courses
   /courses/{id}:
     delete:
       description: Deletes a course. All chapters and lessons are cascade-deleted.
+        Requires ROLE_ADMIN.
       parameters:
       - description: Course ID
         in: path
@@ -742,6 +806,14 @@ paths:
           description: Invalid id
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Course not found
           schema:
@@ -750,7 +822,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Delete a course
+      security:
+      - BearerAuth: []
+      summary: Delete a course (admin only)
       tags:
       - courses
     get:
@@ -787,6 +861,7 @@ paths:
       consumes:
       - application/json
       description: Replaces course name and description. Timestamps are preserved.
+        Requires ROLE_ADMIN.
       parameters:
       - description: Course ID
         in: path
@@ -810,6 +885,14 @@ paths:
           description: Validation failed or invalid id
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Course not found
           schema:
@@ -818,7 +901,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Update an existing course
+      security:
+      - BearerAuth: []
+      summary: Update an existing course (admin only)
       tags:
       - courses
   /courses/{id}/chapters:
@@ -854,6 +939,44 @@ paths:
       summary: List chapters of a course
       tags:
       - chapters
+  /download/{id}:
+    get:
+      description: Streams the stored file by attachment ID. Requires a valid token
+        (any authenticated user).
+      parameters:
+      - description: Attachment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Attachment not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Download a file attachment
+      tags:
+      - attachments
   /health:
     get:
       description: Liveness probe. Returns 200 OK when the service is running.
@@ -872,7 +995,7 @@ paths:
       consumes:
       - application/json
       description: Creates a lesson under an existing chapter. chapter_id is required
-        and validated.
+        and validated. Requires ROLE_ADMIN.
       parameters:
       - description: Lesson payload
         in: body
@@ -891,6 +1014,14 @@ paths:
           description: Validation failed
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Parent chapter not found
           schema:
@@ -899,12 +1030,14 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Create a new lesson
+      security:
+      - BearerAuth: []
+      summary: Create a new lesson (admin only)
       tags:
       - lessons
   /lessons/{id}:
     delete:
-      description: Deletes a single lesson.
+      description: Deletes a single lesson. Requires ROLE_ADMIN.
       parameters:
       - description: Lesson ID
         in: path
@@ -920,6 +1053,14 @@ paths:
           description: Invalid id
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Lesson not found
           schema:
@@ -928,7 +1069,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Delete a lesson
+      security:
+      - BearerAuth: []
+      summary: Delete a lesson (admin only)
       tags:
       - lessons
     get:
@@ -965,7 +1108,7 @@ paths:
       consumes:
       - application/json
       description: Updates lesson name, content and order. chapter_id cannot be changed
-        via PUT.
+        via PUT. Requires ROLE_ADMIN.
       parameters:
       - description: Lesson ID
         in: path
@@ -989,6 +1132,14 @@ paths:
           description: Validation failed or invalid id
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Lesson not found
           schema:
@@ -997,9 +1148,93 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
-      summary: Update an existing lesson
+      security:
+      - BearerAuth: []
+      summary: Update an existing lesson (admin only)
       tags:
       - lessons
+  /lessons/{id}/attachments:
+    get:
+      description: Returns metadata for all files attached to the given lesson.
+      parameters:
+      - description: Lesson ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.AttachmentResponse'
+            type: array
+        "400":
+          description: Invalid id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Lesson not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: List attachments of a lesson
+      tags:
+      - attachments
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Stores a file in MinIO and links it to a lesson. Multipart form:
+        field "file" is the file, "lesson_id" the target lesson. Requires ROLE_ADMIN.'
+      parameters:
+      - description: Target lesson ID
+        in: formData
+        name: lesson_id
+        required: true
+        type: integer
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.AttachmentResponse'
+        "400":
+          description: Missing file or invalid lesson_id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Missing or invalid token
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Requires ROLE_ADMIN
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Lesson not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload a file attachment (admin only)
+      tags:
+      - attachments
 schemes:
 - http
 securityDefinitions:

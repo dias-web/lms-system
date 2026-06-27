@@ -17,7 +17,8 @@ func NewChapterHandler(svc service.ChapterService) *ChapterHandler {
 }
 
 // Register wires all chapter routes onto the given router group. Any handlers
-// passed as authMW guard the mutating endpoints (POST/PUT/DELETE); reads stay
+// passed as authMW guard the mutating endpoints (POST/PUT/DELETE) — in
+// production these are AuthRequired + RequireRole("ROLE_ADMIN"); reads stay
 // public.
 func (h *ChapterHandler) Register(r *gin.Engine, authMW ...gin.HandlerFunc) {
 	r.GET("/courses/:id/chapters", h.ListByCourse)
@@ -78,14 +79,17 @@ func (h *ChapterHandler) GetByID(c *gin.Context) {
 }
 
 // Create godoc
-// @Summary      Create a new chapter
-// @Description  Creates a chapter under an existing course. course_id is required and validated.
+// @Summary      Create a new chapter (admin only)
+// @Description  Creates a chapter under an existing course. course_id is required and validated. Requires ROLE_ADMIN.
 // @Tags         chapters
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        chapter  body      dto.CreateChapterRequest  true  "Chapter payload"
 // @Success      201      {object}  dto.ChapterResponse
 // @Failure      400      {object}  dto.ErrorResponse  "Validation failed"
+// @Failure      401      {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403      {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404      {object}  dto.ErrorResponse  "Parent course not found"
 // @Failure      500      {object}  dto.ErrorResponse
 // @Router       /chapters [post]
@@ -104,15 +108,18 @@ func (h *ChapterHandler) Create(c *gin.Context) {
 }
 
 // Update godoc
-// @Summary      Update an existing chapter
-// @Description  Updates chapter name, description and order. course_id cannot be changed via PUT.
+// @Summary      Update an existing chapter (admin only)
+// @Description  Updates chapter name, description and order. course_id cannot be changed via PUT. Requires ROLE_ADMIN.
 // @Tags         chapters
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        id       path      int                       true  "Chapter ID"
 // @Param        chapter  body      dto.UpdateChapterRequest  true  "Chapter payload"
 // @Success      200      {object}  dto.ChapterResponse
 // @Failure      400      {object}  dto.ErrorResponse  "Validation failed or invalid id"
+// @Failure      401      {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403      {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404      {object}  dto.ErrorResponse  "Chapter not found"
 // @Failure      500      {object}  dto.ErrorResponse
 // @Router       /chapters/{id} [put]
@@ -136,13 +143,16 @@ func (h *ChapterHandler) Update(c *gin.Context) {
 }
 
 // Delete godoc
-// @Summary      Delete a chapter
-// @Description  Deletes a chapter. All lessons are cascade-deleted.
+// @Summary      Delete a chapter (admin only)
+// @Description  Deletes a chapter. All lessons are cascade-deleted. Requires ROLE_ADMIN.
 // @Tags         chapters
 // @Produce      json
+// @Security     BearerAuth
 // @Param        id   path  int  true  "Chapter ID"
 // @Success      204  "Deleted"
 // @Failure      400  {object}  dto.ErrorResponse  "Invalid id"
+// @Failure      401  {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403  {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404  {object}  dto.ErrorResponse  "Chapter not found"
 // @Failure      500  {object}  dto.ErrorResponse
 // @Router       /chapters/{id} [delete]

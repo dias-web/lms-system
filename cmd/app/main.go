@@ -22,6 +22,8 @@
 //	@tag.description	Chapters belong to a course.
 //	@tag.name		lessons
 //	@tag.description	Lessons belong to a chapter and carry the textual content.
+//	@tag.name		attachments
+//	@tag.description	File attachments stored in MinIO and linked to lessons.
 package main
 
 import (
@@ -40,6 +42,7 @@ import (
 	"github.com/dias-web/lms-system/internal/middleware"
 	"github.com/dias-web/lms-system/internal/repository"
 	"github.com/dias-web/lms-system/internal/service"
+	"github.com/dias-web/lms-system/internal/storage"
 	"github.com/dias-web/lms-system/pkg/database"
 	"github.com/dias-web/lms-system/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -82,10 +85,25 @@ func main() {
 	courseRepo := repository.NewCourseRepository(gormDB)
 	chapterRepo := repository.NewChapterRepository(gormDB)
 	lessonRepo := repository.NewLessonRepository(gormDB)
+	attachmentRepo := repository.NewAttachmentRepository(gormDB)
+
+	// Object storage for file attachments. Ensure the bucket exists on boot so
+	// uploads work out of the box (the compose minio-init container does the
+	// same; this also covers host runs).
+	objectStore, err := storage.New(cfg.MinIO)
+	if err != nil {
+		log.Fatalf("minio init: %v", err)
+	}
+	if err := objectStore.EnsureBucket(context.Background()); err != nil {
+		log.Warnf("could not ensure MinIO bucket %q on startup: %v", cfg.MinIO.Bucket, err)
+	} else {
+		log.Infof("MinIO ready: bucket %q at %s", cfg.MinIO.Bucket, cfg.MinIO.Endpoint)
+	}
 
 	courseSvc := service.NewCourseService(courseRepo, log)
 	chapterSvc := service.NewChapterService(chapterRepo, courseRepo, log)
 	lessonSvc := service.NewLessonService(lessonRepo, chapterRepo, log)
+	attachmentSvc := service.NewAttachmentService(attachmentRepo, lessonRepo, objectStore, log)
 
 	if courses, err := courseSvc.List(context.Background()); err != nil {
 		log.Warnf("smoke test: list courses failed: %v", err)
@@ -115,18 +133,28 @@ func main() {
 	// request so the app can start before the Keycloak realm exists.
 	validator := auth.NewValidator(cfg.Keycloak.CertsURL(), cfg.Keycloak.Issuer())
 	authRequired := middleware.AuthRequired(validator, log)
+	requireAdmin := middleware.RequireRole("ROLE_ADMIN")
 	log.Infof("Auth enabled: validating JWTs issued by %s", cfg.Keycloak.Issuer())
 
 	// Keycloak-backed authentication endpoints. login/refresh are public;
 	// user registration requires a valid token carrying ROLE_ADMIN.
 	kcClient := keycloak.NewClient(cfg.Keycloak)
 	authSvc := service.NewAuthService(kcClient, log)
-	handler.NewAuthHandler(authSvc).Register(router, authRequired, middleware.RequireRole("ROLE_ADMIN"))
+	handler.NewAuthHandler(authSvc).Register(router, authRequired, requireAdmin)
 
-	// Mutations require a valid token; reads stay public.
-	handler.NewCourseHandler(courseSvc).Register(router, authRequired)
-	handler.NewChapterHandler(chapterSvc).Register(router, authRequired)
-	handler.NewLessonHandler(lessonSvc).Register(router, authRequired)
+	// Catalog mutations (POST/PUT/DELETE) are restricted to ROLE_ADMIN; reads
+	// stay public.
+	handler.NewCourseHandler(courseSvc).Register(router, authRequired, requireAdmin)
+	handler.NewChapterHandler(chapterSvc).Register(router, authRequired, requireAdmin)
+	handler.NewLessonHandler(lessonSvc).Register(router, authRequired, requireAdmin)
+
+	// File attachments: upload is admin-only, download requires any valid token,
+	// listing a lesson's files is a public read.
+	handler.NewAttachmentHandler(attachmentSvc).Register(
+		router,
+		[]gin.HandlerFunc{authRequired, requireAdmin},
+		[]gin.HandlerFunc{authRequired},
+	)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

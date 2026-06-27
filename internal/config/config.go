@@ -11,6 +11,7 @@ type Config struct {
 	App      AppConfig
 	Postgres PostgresConfig
 	Keycloak KeycloakConfig
+	MinIO    MinIOConfig
 }
 
 type AppConfig struct {
@@ -40,6 +41,14 @@ func (k KeycloakConfig) Issuer() string {
 // uses the internal URL so the backend can always reach it.
 func (k KeycloakConfig) CertsURL() string {
 	return fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", k.URL, k.Realm)
+}
+
+type MinIOConfig struct {
+	Endpoint  string // host:port of the S3 API (no scheme), e.g. localhost:9000
+	AccessKey string // access key / username
+	SecretKey string // secret key / password
+	Bucket    string // bucket where attachments are stored
+	UseSSL    bool   // true when the endpoint is served over HTTPS
 }
 
 type PostgresConfig struct {
@@ -76,6 +85,13 @@ func Load() (*Config, error) {
 			ClientSecret:  getEnv("KEYCLOAK_CLIENT_SECRET", ""),
 			AdminUser:     getEnv("KEYCLOAK_ADMIN_USERNAME", "admin"),
 			AdminPassword: getEnv("KEYCLOAK_ADMIN_PASSWORD", "admin"),
+		},
+		MinIO: MinIOConfig{
+			Endpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
+			AccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+			SecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
+			Bucket:    getEnv("MINIO_BUCKET", "lms-attachments"),
+			UseSSL:    getEnv("MINIO_USE_SSL", "false") == "true",
 		},
 	}
 

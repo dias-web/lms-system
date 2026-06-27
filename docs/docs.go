@@ -277,7 +277,12 @@ const docTemplate = `{
         },
         "/chapters": {
             "post": {
-                "description": "Creates a chapter under an existing course. course_id is required and validated.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a chapter under an existing course. course_id is required and validated. Requires ROLE_ADMIN.",
                 "consumes": [
                     "application/json"
                 ],
@@ -287,7 +292,7 @@ const docTemplate = `{
                 "tags": [
                     "chapters"
                 ],
-                "summary": "Create a new chapter",
+                "summary": "Create a new chapter (admin only)",
                 "parameters": [
                     {
                         "description": "Chapter payload",
@@ -308,6 +313,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -374,7 +391,12 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Updates chapter name, description and order. course_id cannot be changed via PUT.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates chapter name, description and order. course_id cannot be changed via PUT. Requires ROLE_ADMIN.",
                 "consumes": [
                     "application/json"
                 ],
@@ -384,7 +406,7 @@ const docTemplate = `{
                 "tags": [
                     "chapters"
                 ],
-                "summary": "Update an existing chapter",
+                "summary": "Update an existing chapter (admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -416,6 +438,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Chapter not found",
                         "schema": {
@@ -431,14 +465,19 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Deletes a chapter. All lessons are cascade-deleted.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a chapter. All lessons are cascade-deleted. Requires ROLE_ADMIN.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "chapters"
                 ],
-                "summary": "Delete a chapter",
+                "summary": "Delete a chapter (admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -454,6 +493,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid id",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -552,7 +603,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Creates a course. Name length 2..255. Description up to 10000 chars.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a course. Name length 2..255. Description up to 10000 chars. Requires ROLE_ADMIN.",
                 "consumes": [
                     "application/json"
                 ],
@@ -562,7 +618,7 @@ const docTemplate = `{
                 "tags": [
                     "courses"
                 ],
-                "summary": "Create a new course",
+                "summary": "Create a new course (admin only)",
                 "parameters": [
                     {
                         "description": "Course payload",
@@ -583,6 +639,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -643,7 +711,12 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Replaces course name and description. Timestamps are preserved.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Replaces course name and description. Timestamps are preserved. Requires ROLE_ADMIN.",
                 "consumes": [
                     "application/json"
                 ],
@@ -653,7 +726,7 @@ const docTemplate = `{
                 "tags": [
                     "courses"
                 ],
-                "summary": "Update an existing course",
+                "summary": "Update an existing course (admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -685,6 +758,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Course not found",
                         "schema": {
@@ -700,14 +785,19 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Deletes a course. All chapters and lessons are cascade-deleted.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a course. All chapters and lessons are cascade-deleted. Requires ROLE_ADMIN.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "courses"
                 ],
-                "summary": "Delete a course",
+                "summary": "Delete a course (admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -723,6 +813,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid id",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -792,6 +894,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/download/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Streams the stored file by attachment ID. Requires a valid token (any authenticated user).",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Download a file attachment",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Attachment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid id",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Attachment not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Liveness probe. Returns 200 OK when the service is running.",
@@ -814,7 +974,12 @@ const docTemplate = `{
         },
         "/lessons": {
             "post": {
-                "description": "Creates a lesson under an existing chapter. chapter_id is required and validated.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a lesson under an existing chapter. chapter_id is required and validated. Requires ROLE_ADMIN.",
                 "consumes": [
                     "application/json"
                 ],
@@ -824,7 +989,7 @@ const docTemplate = `{
                 "tags": [
                     "lessons"
                 ],
-                "summary": "Create a new lesson",
+                "summary": "Create a new lesson (admin only)",
                 "parameters": [
                     {
                         "description": "Lesson payload",
@@ -845,6 +1010,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -911,7 +1088,12 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Updates lesson name, content and order. chapter_id cannot be changed via PUT.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates lesson name, content and order. chapter_id cannot be changed via PUT. Requires ROLE_ADMIN.",
                 "consumes": [
                     "application/json"
                 ],
@@ -921,7 +1103,7 @@ const docTemplate = `{
                 "tags": [
                     "lessons"
                 ],
-                "summary": "Update an existing lesson",
+                "summary": "Update an existing lesson (admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -953,6 +1135,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Lesson not found",
                         "schema": {
@@ -968,14 +1162,19 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Deletes a single lesson.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a single lesson. Requires ROLE_ADMIN.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "lessons"
                 ],
-                "summary": "Delete a lesson",
+                "summary": "Delete a lesson (admin only)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -991,6 +1190,142 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid id",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Lesson not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/lessons/{id}/attachments": {
+            "get": {
+                "description": "Returns metadata for all files attached to the given lesson.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "List attachments of a lesson",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lesson ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.AttachmentResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid id",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Lesson not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/upload": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Stores a file in MinIO and links it to a lesson. Multipart form: field \"file\" is the file, \"lesson_id\" the target lesson. Requires ROLE_ADMIN.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Upload a file attachment (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Target lesson ID",
+                        "name": "lesson_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AttachmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing file or invalid lesson_id",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Requires ROLE_ADMIN",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -1172,6 +1507,37 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "jdoe"
+                }
+            }
+        },
+        "dto.AttachmentResponse": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string",
+                    "example": "application/pdf"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string",
+                    "example": "syllabus.pdf"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "lesson_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "size": {
+                    "type": "integer",
+                    "example": 20480
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },

@@ -17,7 +17,8 @@ func NewLessonHandler(svc service.LessonService) *LessonHandler {
 }
 
 // Register wires all lesson routes onto the given router group. Any handlers
-// passed as authMW guard the mutating endpoints (POST/PUT/DELETE); reads stay
+// passed as authMW guard the mutating endpoints (POST/PUT/DELETE) — in
+// production these are AuthRequired + RequireRole("ROLE_ADMIN"); reads stay
 // public.
 func (h *LessonHandler) Register(r *gin.Engine, authMW ...gin.HandlerFunc) {
 	r.GET("/chapters/:id/lessons", h.ListByChapter)
@@ -78,14 +79,17 @@ func (h *LessonHandler) GetByID(c *gin.Context) {
 }
 
 // Create godoc
-// @Summary      Create a new lesson
-// @Description  Creates a lesson under an existing chapter. chapter_id is required and validated.
+// @Summary      Create a new lesson (admin only)
+// @Description  Creates a lesson under an existing chapter. chapter_id is required and validated. Requires ROLE_ADMIN.
 // @Tags         lessons
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        lesson  body      dto.CreateLessonRequest  true  "Lesson payload"
 // @Success      201     {object}  dto.LessonResponse
 // @Failure      400     {object}  dto.ErrorResponse  "Validation failed"
+// @Failure      401     {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403     {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404     {object}  dto.ErrorResponse  "Parent chapter not found"
 // @Failure      500     {object}  dto.ErrorResponse
 // @Router       /lessons [post]
@@ -104,15 +108,18 @@ func (h *LessonHandler) Create(c *gin.Context) {
 }
 
 // Update godoc
-// @Summary      Update an existing lesson
-// @Description  Updates lesson name, content and order. chapter_id cannot be changed via PUT.
+// @Summary      Update an existing lesson (admin only)
+// @Description  Updates lesson name, content and order. chapter_id cannot be changed via PUT. Requires ROLE_ADMIN.
 // @Tags         lessons
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        id      path      int                      true  "Lesson ID"
 // @Param        lesson  body      dto.UpdateLessonRequest  true  "Lesson payload"
 // @Success      200     {object}  dto.LessonResponse
 // @Failure      400     {object}  dto.ErrorResponse  "Validation failed or invalid id"
+// @Failure      401     {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403     {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404     {object}  dto.ErrorResponse  "Lesson not found"
 // @Failure      500     {object}  dto.ErrorResponse
 // @Router       /lessons/{id} [put]
@@ -136,13 +143,16 @@ func (h *LessonHandler) Update(c *gin.Context) {
 }
 
 // Delete godoc
-// @Summary      Delete a lesson
-// @Description  Deletes a single lesson.
+// @Summary      Delete a lesson (admin only)
+// @Description  Deletes a single lesson. Requires ROLE_ADMIN.
 // @Tags         lessons
 // @Produce      json
+// @Security     BearerAuth
 // @Param        id   path  int  true  "Lesson ID"
 // @Success      204  "Deleted"
 // @Failure      400  {object}  dto.ErrorResponse  "Invalid id"
+// @Failure      401  {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403  {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404  {object}  dto.ErrorResponse  "Lesson not found"
 // @Failure      500  {object}  dto.ErrorResponse
 // @Router       /lessons/{id} [delete]

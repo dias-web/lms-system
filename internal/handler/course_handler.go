@@ -17,7 +17,8 @@ func NewCourseHandler(svc service.CourseService) *CourseHandler {
 }
 
 // Register wires all course routes onto the given router group. Any handlers
-// passed as authMW guard the mutating endpoints (POST/PUT/DELETE); reads stay
+// passed as authMW guard the mutating endpoints (POST/PUT/DELETE) — in
+// production these are AuthRequired + RequireRole("ROLE_ADMIN"); reads stay
 // public.
 func (h *CourseHandler) Register(r *gin.Engine, authMW ...gin.HandlerFunc) {
 	r.GET("/courses", h.List)
@@ -70,14 +71,17 @@ func (h *CourseHandler) GetByID(c *gin.Context) {
 }
 
 // Create godoc
-// @Summary      Create a new course
-// @Description  Creates a course. Name length 2..255. Description up to 10000 chars.
+// @Summary      Create a new course (admin only)
+// @Description  Creates a course. Name length 2..255. Description up to 10000 chars. Requires ROLE_ADMIN.
 // @Tags         courses
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        course  body      dto.CreateCourseRequest  true  "Course payload"
 // @Success      201     {object}  dto.CourseResponse
 // @Failure      400     {object}  dto.ErrorResponse  "Validation failed"
+// @Failure      401     {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403     {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      500     {object}  dto.ErrorResponse
 // @Router       /courses [post]
 func (h *CourseHandler) Create(c *gin.Context) {
@@ -95,15 +99,18 @@ func (h *CourseHandler) Create(c *gin.Context) {
 }
 
 // Update godoc
-// @Summary      Update an existing course
-// @Description  Replaces course name and description. Timestamps are preserved.
+// @Summary      Update an existing course (admin only)
+// @Description  Replaces course name and description. Timestamps are preserved. Requires ROLE_ADMIN.
 // @Tags         courses
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        id      path      int                      true  "Course ID"
 // @Param        course  body      dto.UpdateCourseRequest  true  "Course payload"
 // @Success      200     {object}  dto.CourseResponse
 // @Failure      400     {object}  dto.ErrorResponse  "Validation failed or invalid id"
+// @Failure      401     {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403     {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404     {object}  dto.ErrorResponse  "Course not found"
 // @Failure      500     {object}  dto.ErrorResponse
 // @Router       /courses/{id} [put]
@@ -127,13 +134,16 @@ func (h *CourseHandler) Update(c *gin.Context) {
 }
 
 // Delete godoc
-// @Summary      Delete a course
-// @Description  Deletes a course. All chapters and lessons are cascade-deleted.
+// @Summary      Delete a course (admin only)
+// @Description  Deletes a course. All chapters and lessons are cascade-deleted. Requires ROLE_ADMIN.
 // @Tags         courses
 // @Produce      json
+// @Security     BearerAuth
 // @Param        id   path  int  true  "Course ID"
 // @Success      204  "Deleted"
 // @Failure      400  {object}  dto.ErrorResponse  "Invalid id"
+// @Failure      401  {object}  dto.ErrorResponse  "Missing or invalid token"
+// @Failure      403  {object}  dto.ErrorResponse  "Requires ROLE_ADMIN"
 // @Failure      404  {object}  dto.ErrorResponse  "Course not found"
 // @Failure      500  {object}  dto.ErrorResponse
 // @Router       /courses/{id} [delete]
